@@ -3,23 +3,28 @@ package wm;
 import java.io.*;
 import java.net.*;
 
-import javax.imageio.IIOException;;
+public class App {
+    public static void main(String[] args) {
+        
+        if (args.length == 0) {
+            System.out.println("Error: no se ha pasado ningun puerto");
+            return;
+        }
 
-public class App 
-{
-    public static void main( String[] args ) throws IIOException
-    {
-        //1.Comprueba que me han pasado el puerto por argumento 
-        // (args[0]) y conviertelo a int
+        int puerto = Integer.parseInt(args[0]);
 
-        if (args[0].isEmpty()) throw new  IIOException("no se ha pasado ningun puerto");
-
-        int puerto =Integer.parseInt(args[0]);
-
-        //2.Crear un server socket en ese puerto
-
-        try {
-            ServerSocket skServer = new ServerSocket(puerto);
+        try (ServerSocket skServer = new ServerSocket(puerto)) {
+            System.out.println("Central iniciada en el puerto " + puerto + ". Esperando...");
+            
+            Socket socketMonitor = skServer.accept(); 
+            
+            // 3. CRUCIAL: Leer lo que manda tu Monitor
+            BufferedReader entrada = new BufferedReader(new InputStreamReader(socketMonitor.getInputStream()));
+            System.out.println("Recibí del Monitor: " + entrada.readLine());
+            
+            // Le contestamos al Monitor para que no reciba null
+            PrintWriter salida = new PrintWriter(socketMonitor.getOutputStream(), true);
+            salida.println("REGISTRO_OK");
         } catch (Exception e) {
             System.out.println("Error: " + e.toString());
         }
