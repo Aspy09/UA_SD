@@ -3,8 +3,6 @@ package wm;
 import java.io.*;
 import java.net.*;
 
-import javax.imageio.IIOException;;
-
 public class App 
 {
     public static void main( String[] args ) throws  IllegalAccessException
@@ -24,8 +22,11 @@ public class App
             skServer = new ServerSocket(puerto);
         } catch (Exception e) {
             System.out.println("Error: " + e.toString());
+            return; // sin ServerSocket no podemos aceptar conexiones
         }
-        
+
+        System.out.println("Central escuchando en el puerto " + puerto);
+
         //3. esperar una conexion de un cliente 
         for(;;){
             Socket skCliente = null;

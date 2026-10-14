@@ -15,6 +15,11 @@ public class HiloCliente extends Thread {
             BufferedReader in = new BufferedReader(new InputStreamReader(skCliente.getInputStream()));
             String mensaje = in.readLine();
             System.out.println(mensaje);
+
+            // Responder al cliente antes de cerrar; si no, su readLine() recibe null
+            PrintWriter out = new PrintWriter(skCliente.getOutputStream(), true);
+            out.println("REGISTRO_OK");
+
             skCliente.close();
         } catch (Exception e) {
             System.out.println("Error: " + e.toString());
