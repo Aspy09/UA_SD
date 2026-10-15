@@ -14,7 +14,16 @@ public class App
 
         int puerto =Integer.parseInt(args[0]);
 
-        //2.Crear un server socket en ese puerto
+        //2.abrir la bd y cargar las estaciones (salen desconectadas)
+        try {
+            BaseDatos.iniciar();
+            Estaciones.cargarDesdeBD();
+        } catch (Exception e) {
+            System.out.println("Error al abrir la base de datos: " + e.toString());
+            return;
+        }
+
+        //3.Crear un server socket en ese puerto
         
         ServerSocket skServer = null;
 
@@ -27,7 +36,7 @@ public class App
 
         System.out.println("Central escuchando en el puerto " + puerto);
 
-        //3. esperar una conexion de un cliente 
+        //4. esperar una conexion de un cliente
         for(;;){
             Socket skCliente = null;
             try {
