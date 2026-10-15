@@ -1,69 +1,56 @@
 package wm;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.*;
+import java.net.Socket;
 
-public class App 
-{
-    public static void main( String[] args ){
-        if (args.length < 3){
-            System.out.println("Error. Uso: java App <puerto_monitor> <ip:puerto_central> <id_ws>");
+public class App {
+    public static void main(String[] args) {
+        // 1) Argumentos
+        if (args.length < 4) {
+            System.out.println("Uso: java wm.App <puerto_engine> <ip_central:puerto> <id_ws> <ubicacion>");
             System.exit(1);
         }
 
-        String puertoLocal = args[0];
-        String centralInfo= args[1];  // Ej: 192.0.0.1:8000 IP:PUERTO 
-        String idEstacion = args[2]; // Ej: WS-01
-        
-
-        // Obtener ip y puerto de la central
-        // Puerto tiene que ser si o si un int
-        String[] puerto_e_ip_Central = centralInfo.split(":");
-        String ipCentral = puerto_e_ip_Central[0];
-        int puertoCentral= Integer.parseInt(puerto_e_ip_Central[1]);
-
-
-        //*******MONITOR ACTUA DE CLIENTE*******
-
-        /*
-            Argumentos del try:
-         1. Crear socket y conectarnos
-         2. Enviar bytes mediante sockets agrupandolos mediante printWriter
-         3. Agrupa y guarda (Buffer reader) en un buffer los bytes del socket recibidos (getINput)
-            y decodificados (por inputStreamReader)
-         */
-
-        try(Socket socketCentral = new Socket(ipCentral, puertoCentral);
-            PrintWriter salida = new PrintWriter(socketCentral.getOutputStream(), true);
-            BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCentral.getInputStream()))){
-
-            
-            System.out.println("Conectado a la CENTRAL. Registrando estación...");
-
-            //TODO: <STX><DATA><ETX><LRC> Formato sugerido por el pdf. Ejm: <STX>REGISTRO#WS-01<ETX>Z
-            salida.println("REGISTRO#" + idEstacion); // por ahora el id con la etiqueta nomas para probar
-
-            
-            String respuestaCentral = entrada.readLine();
-            System.out.println("La central respondio: "+ respuestaCentral);
-
-        }catch(Exception e){
-            System.out.println("Error al conectar a la central: " + e.getMessage());
+        String[] central = args[1].split(":");
+        if (central.length != 2) {
+            System.out.println("Error: la central debe indicarse como IP:PUERTO");
+            System.exit(1);
         }
+        String ipCentral = central[0];
+        int puertoCentral = Integer.parseInt(central[1]);
+        String idWS = args[2];
+        String ubicacion = args[3];
 
-        //*******MONITOR ACTUA DE SERVIDOR*******
+        try {
+            // 2) Conectar y saludar (ENQ -> ACK)
+            Socket socketCentral = new Socket(ipCentral, puertoCentral);
+            Protocolo protocolo = new Protocolo(socketCentral);
 
-        int numero_puertoLocal = Integer.parseInt(puertoLocal);
+            if (!protocolo.enviarENQ()) {
+                System.out.println("CENTRAL no respondio al saludo");
+                socketCentral.close();
+                return;
+            }
+            System.out.println("Conectado a CENTRAL");
 
-        try(ServerSocket socketLocal = new ServerSocket(numero_puertoLocal)){
-            System.out.println("Esperando conexión del Engine...");
-            Socket socketEngine = socketLocal.accept();
+            // 3) Registro
+            protocolo.enviarTrama("REGISTRO#" + idWS + "#" + ubicacion);
+            String respuesta = protocolo.recibirTrama();
 
-        }catch(Exception e){
-            System.out.println("Error al iniciar servidor local "+ e.getMessage());
+            if (respuesta == null || !respuesta.startsWith("OK#")) {
+                System.out.println("Registro rechazado: " + respuesta);
+                socketCentral.close();
+                return;
+            }
+            System.out.println("Estacion " + idWS + " registrada en CENTRAL");
+
+            // 4) La conexion queda abierta (hsata pulsar enter)
+            System.out.println("Pulsa Enter para desconectar...");
+            System.in.read();// provisional para que esto siga vivo luego lo cambio
+            protocolo.enviarEOT();
+            socketCentral.close();
+
+        } catch (Exception e) {
+            System.out.println("Error con CENTRAL: " + e.getMessage());
         }
-
     }
 }
