@@ -1,5 +1,6 @@
 package wm;
 
+import java.sql.SQLException;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -9,6 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Estaciones {
     private static final ConcurrentHashMap<String, Estacion> estaciones = new ConcurrentHashMap<>();
+
+    // al arrancar: meter en el mapa las estaciones de la bd (desconectadas)
+    public static synchronized void cargarDesdeBD() throws SQLException {
+        for (Estacion ws : BaseDatos.cargarEstaciones()) {
+            estaciones.put(ws.getId(), ws);
+            System.out.println("[BD] " + ws);
+        }
+        System.out.println("[BD] " + estaciones.size() + " estaciones cargadas");
+    }
 
     // REGISTRO: devuelve la respuesta que hay que enviar al Monitor.
     // synchronized: comprobar "ya conectada" y cambiar el estado tiene que ser atomico,
@@ -24,6 +34,13 @@ public class Estaciones {
         }
         ws.setUbicacion(ubicacion);
         ws.setEstado(ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
+
+        // guardar en la bd, si falla la estacion sigue funcionando igual
+        try {
+            BaseDatos.guardarEstacion(ws);
+        } catch (SQLException e) {
+            System.out.println("[BD] Error guardando " + id + ": " + e.getMessage());
+        }
         System.out.println("[ESTADO] " + ws);
         return "OK#" + id;
     }
