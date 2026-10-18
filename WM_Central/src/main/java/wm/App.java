@@ -30,6 +30,7 @@ public class App
         //3.conectar con kafka y empezar a leer solicitudes y telemetria en otro hilo
         try {
             KafkaCentral.iniciar(brokerKafka);
+            Estaciones.publicarTodas(); // para que los fo vean las estaciones desde el principio
             new ConsumidorKafka().start();
             System.out.println("Conectada a kafka en " + brokerKafka);
         } catch (Exception e) {
