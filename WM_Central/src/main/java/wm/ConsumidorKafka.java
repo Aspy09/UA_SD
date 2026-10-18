@@ -30,8 +30,13 @@ public class ConsumidorKafka extends Thread {
             while (true) {
                 ConsumerRecords<String, String> mensajes = consumidor.poll(Duration.ofSeconds(1));
                 for (ConsumerRecord<String, String> m : mensajes) {
-                    // TODO: procesar segun el topic
                     System.out.println("[KAFKA] <- " + m.topic() + ": " + m.value());
+                    // try dentro del for para que un mensaje mal escrito no pare el hilo
+                    try {
+                        Riegos.procesar(m.topic(), m.value());
+                    } catch (Exception e) {
+                        System.out.println("[KAFKA] Mensaje incorrecto (" + m.value() + "): " + e.toString());
+                    }
                 }
             }
         } catch (Exception e) {
