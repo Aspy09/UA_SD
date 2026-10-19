@@ -1,0 +1,168 @@
+# Protocolo de comunicación — WaterManagement
+
+Este documento define cómo se hablan los módulos. **Cualquier cambio aquí se avisa a la otra persona antes de programarlo.**
+
+---
+
+## 1. Reglas generales
+
+- Los campos de cada mensaje se separan con `#`. El primer campo es siempre el **código de operación**.
+- Texto en ASCII, sin tildes ni `#` dentro de los campos (ej. ubicación `Parque Norte`, no `Parque Nórte`).
+- IDs: estaciones `WS-01`, `WS-02`…; operarios `FO-01`, `FO-02`…; la propia central se identifica como `CENTRAL`.
+
+### Estados de una WS
+
+| Estado | Color en el panel | Significado |
+|---|---|---|
+| `DISPONIBLE` | Verde | Conectada, sin averías, esperando riego |
+| `REGANDO` | Verde parpadeando | Regando ahora mismo |
+| `FUGA` | Rojo | Avería detectada; no puede regar |
+| `FUERA_DE_SERVICIO` | Naranja | Bloqueada por CENTRAL |
+| `DESCONECTADA` | Gris | Su Monitor no está conectado a CENTRAL |
+
+---
+
+## 2. Sockets: formato de trama
+
+Se usa en **Monitor ↔ CENTRAL** y en **Engine ↔ Monitor**.
+
+```
+<STX><DATA><ETX><LRC>
+```
+
+| Símbolo | Byte | Para qué sirve |
+|---|---|---|
+| `STX` | `0x02` | Inicio de mensaje |
+| `ETX` | `0x03` | Fin de mensaje |
+| `LRC` | 1 byte | XOR de todos los bytes de `DATA` |
+| `ENQ` | `0x05` | "¿Estás ahí?" al abrir la conexión |
+| `ACK` | `0x06` | Trama recibida correctamente |
+| `NACK` | `0x15` | Trama corrupta (el LRC no coincide) → el emisor la reenvía |
+| `EOT` | `0x04` | Fin de la comunicación, se va a cerrar |
+
+**Ejemplo:** `DATA = "OK#WS-01"` → LRC = `0x0F` → se envía `02 'OK#WS-01' 03 0F`.
+
+### Flujo
+
+La conexión es **persistente**: se abre una vez y se mantiene. Si se cierra sin `EOT` (el `readLine`/`read` devuelve fin de flujo), el otro extremo lo trata como **desconexión**.
+
+```
+Cliente                         Servidor
+  |--- ENQ ------------------------>|
+  |<-------------------------- ACK -|
+  |                                 |
+  |--- STX PETICION ETX LRC ------->|   ┐
+  |<-------------------------- ACK -|   │ se repite
+  |<------ STX RESPUESTA ETX LRC ---|   │ tantas veces
+  |--- ACK ------------------------>|   ┘ como haga falta
+  |                                 |
+  |--- EOT ------------------------>|   (solo al cerrar de forma ordenada)
+```
+
+Cualquiera de los dos extremos puede iniciar una petición (ej. el Monitor manda `AVERIA` cuando quiera; el Monitor pregunta `SALUD` al Engine cada segundo).
+
+---
+
+## 3. Monitor (WM_WS_M) ↔ CENTRAL (WM_Central)
+
+El Monitor es el **cliente**; CENTRAL es el **servidor** (puerto pasado por argumento).
+
+Argumentos del Monitor: `<puerto_para_engine> <ip_central:puerto> <id_ws> <ubicacion>`
+(la ubicación se añade como 4º argumento porque el enunciado pide enviarla al registrarse).
+
+| Petición (Monitor → CENTRAL) | Respuesta (CENTRAL → Monitor) | Qué hace CENTRAL |
+|---|---|---|
+| `REGISTRO#<id_ws>#<ubicacion>` | `OK#<id_ws>` | Si el ID no existe en BD, lo da de alta. Lo marca `DISPONIBLE` (o `FUERA_DE_SERVICIO` si estaba bloqueada). |
+| | `KO#<id_ws>#<motivo>` | Ej. `KO#WS-01#YA_CONECTADA` si ya hay otro Monitor con ese ID. El Monitor termina. |
+| `AVERIA#<id_ws>` | `OK#<id_ws>` | Marca `FUGA`. Si estaba regando, ordena `PARAR`. |
+| `RESUELTO#<id_ws>` | `OK#<id_ws>` | Marca `DISPONIBLE`. |
+
+Desconexión (socket cerrado) → CENTRAL marca la WS como `DESCONECTADA`.
+
+---
+
+## 4. Engine (WM_WS_E) ↔ Monitor (WM_WS_M)
+
+El Engine es el **cliente**; el Monitor es el **servidor**.
+
+| Petición | Respuesta | Notas |
+|---|---|---|
+| Engine → Monitor: `CONECTAR` | `ID#<id_ws>#<ubicacion>` | Así el Engine sabe qué WS es (el ID lo valida CENTRAL al registrar el Monitor). |
+| | `KO#NO_REGISTRADA` | Si CENTRAL aún no ha aceptado el registro. El Engine reintenta. |
+| Monitor → Engine (cada 1 s): `SALUD#<id_ws>` | `OK#<id_ws>` o `KO#<id_ws>` | El Engine responde `KO` mientras el usuario tenga simulada la avería (tecla). |
+
+Si el Engine responde `KO` o no responde en ~3 s → el Monitor envía `AVERIA` a CENTRAL.
+Cuando vuelve a responder `OK` → el Monitor envía `RESUELTO`.
+
+---
+
+## 5. Kafka
+
+En Kafka **no** se usa STX/ETX/LRC: Kafka ya separa los mensajes y garantiza su integridad. Se envía solo el texto `CODIGO#campo#...`.
+
+Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificaciones`), para que los mensajes de una misma WS lleguen en orden.
+
+| Topic | Quién escribe → quién lee |
+|---|---|
+| `wm.solicitudes` | FO y Engine → CENTRAL |
+| `wm.ordenes` | CENTRAL → Engines |
+| `wm.telemetria` | Engines → CENTRAL |
+| `wm.notificaciones` | CENTRAL → FO |
+| `wm.estaciones` | CENTRAL → FO (estado de todas las WS) |
+
+**group.id:** CENTRAL usa `central`. Cada Engine usa su ID (`WS-01`) y cada FO el suyo (`FO-01`), para que **todos** reciban todos los mensajes del topic y cada uno filtre los que le tocan.
+
+### `wm.solicitudes` (FO / Engine → CENTRAL)
+| Mensaje | Significado |
+|---|---|
+| `RIEGO#<origen>#<id_ws>#<segundos>` | Pide regar `<id_ws>` durante `<segundos>`. `<origen>` = ID del FO, o el ID de la WS si se pide desde el menú de la estación. |
+
+### `wm.ordenes` (CENTRAL → Engine)
+| Mensaje | Significado |
+|---|---|
+| `INICIAR#<id_ws>#<origen>#<segundos>` | Abrir electroválvula. `<origen>` = FO, WS o `CENTRAL`. |
+| `PARAR#<id_ws>` | Cerrar electroválvula (por avería). |
+| `BLOQUEAR#<id_ws>` | Parar si riega y pasar a `FUERA_DE_SERVICIO`. |
+| `ACTIVAR#<id_ws>` | Volver a `DISPONIBLE`. |
+
+`<id_ws>` = `TODAS` para enviar la orden a todas las estaciones.
+
+### `wm.telemetria` (Engine → CENTRAL)
+| Mensaje | Cuándo |
+|---|---|
+| `INICIADO#<id_ws>` | Ha abierto la electroválvula tras `INICIAR`. |
+| `RECHAZADO#<id_ws>#<motivo>` | No puede regar (ej. `FUGA`). |
+| `RIEGO#<id_ws>#<caudal_l_min>#<volumen_l>` | Cada segundo mientras riega. Decimales con punto: `11.4`. |
+| `FIN#<id_ws>#<volumen_total_l>#<duracion_s>#<motivo>` | Fin del riego. Motivo: `TIEMPO`, `MANUAL`, `AVERIA` o `BLOQUEO`. |
+
+### `wm.notificaciones` (CENTRAL → FO)
+| Mensaje | Cuándo |
+|---|---|
+| `INFO#<id_fo>#<id_ws>#<texto>` | Pasos intermedios ("Validando estacion", "Esperando confirmacion de la WS"…). |
+| `AUTORIZADO#<id_fo>#<id_ws>` | La WS ha confirmado `INICIADO`. |
+| `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`. |
+| `RIEGO#<id_fo>#<id_ws>#<caudal>#<volumen>` | Reenvío de la telemetría solo al FO que pidió el riego. |
+| `RESUMEN#<id_fo>#<id_ws>#<volumen_total>#<duracion_s>#<motivo>` | Al terminar. Tras esto el FO espera 4 s y pide el siguiente servicio del fichero. |
+
+### `wm.estaciones` (CENTRAL → todos los FO)
+| Mensaje | Cuándo |
+|---|---|
+| `ESTADO#<id_ws>#<ubicacion>#<estado>` | Cada vez que cambia el estado de una WS (y una vez por WS al arrancar CENTRAL). |
+
+---
+
+## 6. Ejemplo completo: un riego pedido por un operario
+
+```
+FO-01   → wm.solicitudes     RIEGO#FO-01#WS-04#60
+CENTRAL → wm.notificaciones  INFO#FO-01#WS-04#Validando estacion
+          (CENTRAL comprueba en su estado que WS-04 está DISPONIBLE)
+CENTRAL → wm.ordenes         INICIAR#WS-04#FO-01#60
+WS-04   → wm.telemetria      INICIADO#WS-04
+CENTRAL → wm.notificaciones  AUTORIZADO#FO-01#WS-04
+WS-04   → wm.telemetria      RIEGO#WS-04#11.4#0.2      (cada segundo)
+CENTRAL → wm.notificaciones  RIEGO#FO-01#WS-04#11.4#0.2
+   ... 60 segundos ...
+WS-04   → wm.telemetria      FIN#WS-04#684.0#60#TIEMPO
+CENTRAL → wm.notificaciones  RESUMEN#FO-01#WS-04#684.0#60#TIEMPO
+```

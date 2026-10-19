@@ -1,0 +1,86 @@
+package wm;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+// acceso a la bd sqlite de la central (wm.db)
+// solo guardamos lo que tiene que seguir despues de reiniciar: estaciones y operarios
+// el estado en tiempo real no se guarda
+public class BaseDatos {
+    private static final String URL = "jdbc:sqlite:wm.db";
+
+    // una sola conexion para toda la central, por eso los metodos son synchronized
+    private static Connection conexion;
+
+    //1.abrir la conexion y crear las tablas si no existen
+    public static synchronized void iniciar() throws SQLException {
+        conexion = DriverManager.getConnection(URL);
+
+        try (Statement st = conexion.createStatement()) {
+            st.execute("CREATE TABLE IF NOT EXISTS estaciones ("
+                    + "id TEXT PRIMARY KEY, "
+                    + "ubicacion TEXT NOT NULL, "
+                    + "bloqueada INTEGER NOT NULL DEFAULT 0)"); // sqlite no tiene boolean: 0 no, 1 si
+            st.execute("CREATE TABLE IF NOT EXISTS operarios ("
+                    + "id TEXT PRIMARY KEY, "
+                    + "nombre TEXT NOT NULL)");
+        }
+        crearOperariosDePrueba();
+    }
+
+    // si no hay operarios metemos unos cuantos para probar
+    private static void crearOperariosDePrueba() throws SQLException {
+        try (Statement st = conexion.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM operarios")) {
+            if (rs.getInt(1) > 0) return;
+        }
+
+        String[][] operarios = { { "FO-01", "Ana" }, { "FO-02", "Luis" }, { "FO-03", "Marta" } };
+
+        // con ? y setString evitamos inyeccion sql
+        try (PreparedStatement ps = conexion.prepareStatement("INSERT INTO operarios (id, nombre) VALUES (?, ?)")) {
+            for (String[] op : operarios) {
+                ps.setString(1, op[0]);
+                ps.setString(2, op[1]);
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    // devuelve todas las estaciones guardadas (empiezan desconectadas)
+    public static synchronized List<Estacion> cargarEstaciones() throws SQLException {
+        List<Estacion> lista = new ArrayList<>();
+        try (Statement st = conexion.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id, ubicacion, bloqueada FROM estaciones")) {
+            while (rs.next()) {
+                Estacion ws = new Estacion(rs.getString("id"), rs.getString("ubicacion"));
+                ws.setBloqueada(rs.getInt("bloqueada") == 1);
+                lista.add(ws);
+            }
+        }
+        return lista;
+    }
+
+    // inserta la estacion y si ya existe actualiza sus datos
+    public static synchronized void guardarEstacion(Estacion ws) throws SQLException {
+        String sql = "INSERT INTO estaciones (id, ubicacion, bloqueada) VALUES (?, ?, ?) "
+                + "ON CONFLICT(id) DO UPDATE SET ubicacion = excluded.ubicacion, bloqueada = excluded.bloqueada";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, ws.getId());
+            ps.setString(2, ws.getUbicacion());
+            ps.setInt(3, ws.isBloqueada() ? 1 : 0);
+            ps.executeUpdate();
+        }
+    }
+
+    // para comprobar las peticiones de riego de los operarios
+    public static synchronized boolean existeOperario(String id) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement("SELECT 1 FROM operarios WHERE id = ?")) {
+            ps.setString(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+}
