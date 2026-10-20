@@ -31,7 +31,7 @@ public class App {
             idWS = respuesta.split("#")[1];
             System.out.println("Conectado al Monitor. Soy la estacion " + idWS
                     + ". Pulsa Enter para simular/resolver una averia.");
-
+            KafkaEngine.escucharOrdenes(idWS); // empzar a leer ordenes
             // Responder a cada comprobacion de salud
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {
@@ -57,6 +57,10 @@ public class App {
             System.out.println("Error: el monitor debe indicarse como IP:PUERTO");
             System.exit(1);
         }
+
+        // que kafka solo muestre sus errores, no todos sus logs
+        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
+        KafkaEngine.iniciar(args[0]);
 
         // Hilo del teclado: cada Enter activa o desactiva la averia simulada
         Thread teclado = new Thread(() -> {
