@@ -2,6 +2,9 @@ package wm;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
 public class App {
 
     // Datos de la estacion (llegan por argumento)
@@ -20,6 +23,41 @@ public class App {
         System.out.println("CENTRAL respondio a " + mensaje + ": " + central.recibirTrama());
     }
 
+    // Conecta con central, saluda y se registra
+    // Devuelve true si central nos acepta. Nunca tira excepciones
+    private static boolean conectarCentral() {
+        try {
+            Socket s = new Socket();
+            s.connect(new InetSocketAddress(ipCentral, puertoCentral), 3000); // max 3s para conectar
+            s.setSoTimeout(5000); // max 5s esperando cada respuesta de central
+            Protocolo p = new Protocolo(s);
+
+            if (!p.enviarENQ() || !p.enviarTrama("REGISTRO#" + idWS + "#" + ubicacion)) {
+                System.out.println("CENTRAL no respondio al saludo");
+                s.close();
+                return false;
+            }
+            String respuesta = p.recibirTrama();
+            if (respuesta == null || !respuesta.startsWith("OK#")) {
+                System.out.println("Registro rechazado: " + respuesta);
+                s.close();
+                return false;
+            }
+
+            // Ahora con el registro confirmado guardamos la conexion
+            socketCentral = s;
+            central = p;
+            System.out.println("Estacion " + idWS + " registrada en CENTRAL");
+            return true;
+        } catch (IOException e) {
+            System.out.println("CENTRAL no disponible (" + e.getMessage() + ")");
+            return false;
+        }
+    }
+
+
+    // ************************** MAIN **************************
+
     public static void main(String[] args) {
         // 1) Argumentos
         if (args.length < 4) {
@@ -32,35 +70,17 @@ public class App {
             System.out.println("Error: la central debe indicarse como IP:PUERTO");
             System.exit(1);
         }
-        String ipCentral = datosCentral[0];
-        int puertoCentral = Integer.parseInt(datosCentral[1]);
-        String idWS = args[2];
-        String ubicacion = args[3];
+        ipCentral = datosCentral[0];
+        puertoCentral = Integer.parseInt(datosCentral[1]);
+        idWS = args[2];
+        ubicacion = args[3];
 
         try {
-            // 2) Conectar y saludar (ENQ -> ACK)
-            Socket socketCentral = new Socket(ipCentral, puertoCentral);
-            Protocolo protocolo = new Protocolo(socketCentral);
+            
+            // 2) Conectar y registrarse en central
+            if (!conectarCentral()) return;
 
-            if (!protocolo.enviarENQ()) {
-                System.out.println("CENTRAL no respondio al saludo");
-                socketCentral.close();
-                return;
-            }
-            System.out.println("Conectado a CENTRAL");
-
-            // 3) Registro
-            protocolo.enviarTrama("REGISTRO#" + idWS + "#" + ubicacion);
-            String respuesta = protocolo.recibirTrama();
-
-            if (respuesta == null || !respuesta.startsWith("OK#")) {
-                System.out.println("Registro rechazado: " + respuesta);
-                socketCentral.close();
-                return;
-            }
-            System.out.println("Estacion " + idWS + " registrada en CENTRAL");
-
-            // 4) Servidor para el engine
+            // 3) Servidor para el engine
             int puertoEngine = Integer.parseInt(args[0]);
             ServerSocket servidorEngine = new ServerSocket(puertoEngine);
             boolean enAveria = false;
@@ -72,7 +92,7 @@ public class App {
                 Protocolo engine = new Protocolo(socketEngine);
 
                 try {
-                    // 4.1) Saludo e identificacion del engine
+                    // 3.1) Saludo e identificacion del engine
                     if (!engine.esperarENQ() || !"CONECTAR".equals(engine.recibirTrama())) {
                         System.out.println("Conexion rechazada: no es un Engine");
                         socketEngine.close();
@@ -81,7 +101,7 @@ public class App {
                     engine.enviarTrama("ID#" + idWS + "#" + ubicacion);
                     System.out.println("Engine conectado");
 
-                    // 4.2) Comprobacion de salud cada segundo
+                    // 3.2) Comprobacion de salud cada segundo
                     while (true) {
                         engine.enviarTrama("SALUD#" + idWS);
                         String r = engine.recibirTrama();
@@ -89,10 +109,10 @@ public class App {
 
                         boolean ok = r.startsWith("OK#");
                         if (!ok && !enAveria) {
-                            avisarCentral(protocolo, "AVERIA#" + idWS);
+                            avisarCentral(central, "AVERIA#" + idWS);
                             enAveria = true;
                         } else if (ok && enAveria) {
-                            avisarCentral(protocolo, "RESUELTO#" + idWS);
+                            avisarCentral(central, "RESUELTO#" + idWS);
                             enAveria = false;
                         }
                         Thread.sleep(1000);
@@ -109,7 +129,7 @@ public class App {
 
                 // Si llegamos aca es porque el Engine fallo. Avisamos y esperamos a otro
                 if (!enAveria) {
-                    avisarCentral(protocolo, "AVERIA#" + idWS);
+                    avisarCentral(central, "AVERIA#" + idWS);
                     enAveria = true;
                 }
                 socketEngine.close();
