@@ -21,10 +21,68 @@ public class App {
 
     // id_ws -> "ubicacion: ESTADO", ordenado por id y seguro entre hilos
     private static final Map<String, String> estaciones = new ConcurrentSkipListMap<>();
+
+
+    // Modo fichero: una peticion por linea (WS-01#60). Lanza una, espera a que acabe y4s
+    static void lanzarFichero(String ruta) {
+        List<String> lineas;
+        try {
+            // ISO_8859_1 nunca falla al leer (aunque el fichero tenga tildes raras) ~sugerencia que me tiro, ni idea~
+            lineas = Files.readAllLines(Path.of(ruta), StandardCharsets.ISO_8859_1);
+        } catch (IOException e) {
+            System.out.println("No se puede leer el fichero " + ruta + ": " + e.getMessage());
+            return;
+        }
+
+        enFichero = true;
+        int n = 0;
+        for (String linea : lineas) {
+            n++;
+            linea = linea.trim();
+            if (linea.isEmpty()) continue;
+
+            String[] c = linea.split("#");
+            if (c.length != 2) {
+                System.out.println("Linea " + n + " ignorada (formato ID#segundos): " + linea);
+                continue;
+            }
+            String idWS = c[0].trim().toUpperCase();
+            String segundos = c[1].trim();
+            System.out.println("\n--- Linea " + n + ": " + idWS + " durante " + segundos + " s");
+
+            finalizados.clear(); // descartar avisos viejos
+            if (!pedirRiego(idWS, segundos)) continue; // linea mal escrita, entonces no se envia
+
+            try {
+                if (!esperarFin(idWS, Integer.parseInt(segundos))) {
+                    System.out.println("Sin respuesta de CENTRAL para " + idWS + "; paso a la siguiente");
+                }
+                Thread.sleep(4000); // 4s entre repes
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+        enFichero = false;
+        System.out.println("\n--- Fichero terminado");
+    }
+
+    // Espera el RESUMEN o DENEGADO de esa estacion, como mucho la duracion del riego + 60 s
+    private static boolean esperarFin(String idWS, int segundos) throws InterruptedException {
+        long limite = System.currentTimeMillis() + (segundos + 60) * 1000L;
+        while (true) {
+            long queda = limite - System.currentTimeMillis();
+            if (queda <= 0) return false;
+            String ws = finalizados.poll(queda, TimeUnit.MILLISECONDS);
+            if (ws == null) return false;         // se acabo el tiempo
+            if (ws.equals(idWS)) return true;     // es el fin de nuestra peticion
+        }
+    }
+
+
     public static void main(String[] args) {
         // 1) Argumentos
         if (args.length < 2) {
-            System.out.println("Uso: java -jar WM_FO.jar <ip_broker:puerto> <id_operario>");
+            System.out.println("Uso: java -jar WM_FO.jar <ip_broker:puerto> <id_operario> [fichero]");
             System.exit(1);
         }
         idFO = args[1];
@@ -47,6 +105,8 @@ public class App {
         }
 
         // 4) Menu (hilo principal)
+        // Opcional: java -jar WM_FO.jar <broker> <id_operario> <fichero> lanza el fichero al arrancar
+        if (args.length >= 3) lanzarFichero(args[2]);
         menu();
     }
 
@@ -127,14 +187,16 @@ public class App {
                 break;
             case "DENEGADO":   // DENEGADO#fo#ws#motivo
                 System.out.println(ws + "Riego DENEGADO: " + c[3]);
-                mostrarMenu();
+                finalizados.offer(c[2]);
+                if (!enFichero) mostrarMenu();
                 break;
             case "RIEGO":    // RIEGO#fo#ws#caudal#volumen
                 System.out.println(ws + "Caudal " + c[3] + " L/min - Volumen " + c[4] + " L");
                 break;
             case "RESUMEN":    // RESUMEN#fo#ws#volumen#duracion#motivo
                 System.out.println(ws + "FIN DEL RIEGO: " + c[3] + " L en " + c[4] + " s (" + c[5] + ")");
-                mostrarMenu();
+                finalizados.offer(c[2]);
+                if (!enFichero) mostrarMenu();
                 break;
             default:
                 System.out.println(ws + mensaje);
