@@ -50,6 +50,7 @@ public class Riego extends Thread {
         KafkaEngine.enviar(KafkaEngine.TELEMETRIA, idWS,
                 String.format(Locale.US, "FIN#%s#%.2f#%d#%s", idWS, volumen, t, motivo));
         System.out.println("== Riego terminado: " + motivo);
+        App.mostrarMenu(); // volver a mostrar menu
         Estacion.riegoTerminado(this);
     }
 }

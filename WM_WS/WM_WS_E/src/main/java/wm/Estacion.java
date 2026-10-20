@@ -71,4 +71,23 @@ public class Estacion {
     public static synchronized void riegoTerminado(Riego r) {
         if (riegoActual == r) riegoActual = null;
     }
+
+    public static synchronized String getId() {
+        return idWS;
+    }
+
+    // Opcion -parar riego-. Devuelve false si no habia riego
+    public static synchronized boolean pararManual() {
+        if (riegoActual == null) return false;
+        riegoActual.parar("MANUAL");
+        return true;
+    }
+
+    // Para la opcion -ver estado- del menu
+    public static synchronized String descripcion() {
+        String estado = (riegoActual != null) ? "REGANDO" : "EN REPOSO";
+        return idWS + " -> " + estado
+                + (averia ? ", CON AVERIA" : "")
+                + (bloqueada ? ", BLOQUEADA" : "");
+    }
 }

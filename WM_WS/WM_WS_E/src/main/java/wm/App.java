@@ -7,7 +7,17 @@ import java.util.Scanner;
 
 public class App {
     private static String idWS = null; // lo dice el monitor al conectar
+    private static boolean menuIniciado = false;
 
+
+    static synchronized void iniciarMenu() {
+        mostrarMenu();
+        if (menuIniciado) return; // si kafka reasigna mas tarde, solo volver a mostrarlo
+        menuIniciado = true;
+        Thread menu = new Thread(App::menu);
+        menu.setDaemon(true);
+        menu.start();
+    }
 
     // Conecta con el monitor y responde a SALUD hasta perder la conexion. no tira excepciones
     private static void atenderMonitor(String ip, int puerto) {
@@ -29,8 +39,7 @@ public class App {
             idWS = respuesta.split("#")[1];
             Estacion.setId(idWS);
 
-            System.out.println("Conectado al Monitor. Soy la estacion " + idWS
-                    + ". Pulsa Enter para simular/resolver una averia.");
+            System.out.println("Conectado al Monitor. Soy la estacion " + idWS);
 
             KafkaEngine.escucharOrdenes(idWS); // empzar a leer ordenes
             // Responder a cada comprobacion de salud
@@ -47,6 +56,60 @@ public class App {
         }
     }
 
+    // Menu de la estacion
+    private static void menu() {
+        Scanner sc = new Scanner(System.in);
+        
+        while (sc.hasNextLine()) {
+            switch (sc.nextLine().trim()) {
+                case "1":
+                    pedirRiego(sc);
+                    break;
+                case "2":
+                    if (!Estacion.pararManual()) System.out.println("No hay ningun riego en marcha");
+                    break;
+                case "3":
+                    Estacion.setAveria(!Estacion.hayAveria());
+                    break;
+                case "4":
+                    System.out.println(Estacion.descripcion());
+                    break;
+                case "":
+                    break; // Enter suelto muestra otra vez el menu
+                default:
+                    System.out.println("Opcion no valida");
+            }
+            mostrarMenu();
+        }
+    }
+
+    static void mostrarMenu() {
+        System.out.println();
+        System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado");
+        System.out.print("Opcion: ");
+    }
+
+    // Pedir riego desde la propia estacion: origen = el id de la estacion
+    private static void pedirRiego(Scanner sc) {
+        String id = Estacion.getId();
+        if (id == null) {
+            System.out.println("Aun no estamos conectados al Monitor");
+            return;
+        }
+        System.out.print("Segundos de riego: ");
+        if (!sc.hasNextLine()) return;
+        try {
+            int segundos = Integer.parseInt(sc.nextLine().trim());
+            if (segundos <= 0) throw new NumberFormatException();
+            KafkaEngine.enviar(KafkaEngine.SOLICITUDES, id, "RIEGO#" + id + "#" + id + "#" + segundos);
+        } catch (NumberFormatException e) {
+            System.out.println("Hay que poner un numero de segundos mayor que 0");
+        }
+    }
+
+
+    //************** MAIN **************
+
     public static void main(String[] args) {
         // Formato del PDF: <ip_broker:puerto> <ip_monitor:puerto> (el broker se usara con Kafka)
         if (args.length < 2) {
@@ -62,17 +125,6 @@ public class App {
         // que kafka solo muestre sus errores, no todos sus logs
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
         KafkaEngine.iniciar(args[0]);
-
-        // Hilo del teclado: cada Enter activa o desactiva la averia simulada
-        Thread teclado = new Thread(() -> {
-            Scanner sc = new Scanner(System.in);
-            while (sc.hasNextLine()) {
-                sc.nextLine();
-                Estacion.setAveria(!Estacion.hayAveria());
-            }
-        });
-        teclado.setDaemon(true);
-        teclado.start();
 
         String ipMonitor = monitor[0];
         int puertoMonitor = Integer.parseInt(monitor[1]);

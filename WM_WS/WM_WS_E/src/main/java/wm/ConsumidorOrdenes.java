@@ -36,11 +36,13 @@ public class ConsumidorOrdenes extends Thread {
             consumidor.subscribe(List.of(KafkaEngine.ORDENES), new ConsumerRebalanceListener() {
                 public void onPartitionsAssigned(Collection<TopicPartition> particiones) {
                     consumidor.seekToEnd(particiones);
+                    System.out.println("[KAFKA] Listo para recibir ordenes de " + idWS);
+                    App.iniciarMenu();
+
                 }
                 public void onPartitionsRevoked(Collection<TopicPartition> particiones) {
                 }
             });
-            System.out.println("[KAFKA] Escuchando ordenes para " + idWS);
 
             //3. Pedir mensajes nuevos todo el rato (si no hay espera1 s)
             while (true) {
