@@ -6,8 +6,6 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class App {
-    // volatile: cambia el hilo del teclado y lee el hilo principal
-    private static volatile boolean averiaSimulada = false;
     private static String idWS = null; // lo dice el monitor al conectar
 
 
@@ -29,14 +27,17 @@ public class App {
                 return;
             }
             idWS = respuesta.split("#")[1];
+            Estacion.setId(idWS);
+
             System.out.println("Conectado al Monitor. Soy la estacion " + idWS
                     + ". Pulsa Enter para simular/resolver una averia.");
+
             KafkaEngine.escucharOrdenes(idWS); // empzar a leer ordenes
             // Responder a cada comprobacion de salud
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {
                 if (mensaje.startsWith("SALUD#")) {
-                    protocolo.enviarTrama((averiaSimulada ? "KO#" : "OK#") + idWS);
+                    protocolo.enviarTrama((Estacion.hayAveria() ? "KO#" : "OK#") + idWS);
                 }
             }
             System.out.println("El Monitor cerro la conexion");
@@ -67,9 +68,7 @@ public class App {
             Scanner sc = new Scanner(System.in);
             while (sc.hasNextLine()) {
                 sc.nextLine();
-                averiaSimulada = !averiaSimulada;
-                System.out.println(averiaSimulada ? ">> Averia SIMULADA: respondere KO"
-                                                  : ">> Averia resuelta: respondere OK");
+                Estacion.setAveria(!Estacion.hayAveria());
             }
         });
         teclado.setDaemon(true);

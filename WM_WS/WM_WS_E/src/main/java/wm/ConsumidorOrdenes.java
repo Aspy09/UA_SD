@@ -52,7 +52,13 @@ public class ConsumidorOrdenes extends Thread {
                     if (!c[1].equals(idWS) && !c[1].equals("TODAS")) continue;
 
                     System.out.println("[KAFKA] <- orden: " + m.value());
-                    // paso 4: aqui la estacion va a empezar o parar el riego
+
+                    // una orden mal escrita no debe parar el hilo
+                    try {
+                        Estacion.procesarOrden(c);
+                    } catch (Exception e) {
+                        System.out.println("[KAFKA] Orden incorrecta (" + m.value() + "): " + e);
+                    }
                 }
             }
         } catch (Exception e) {
