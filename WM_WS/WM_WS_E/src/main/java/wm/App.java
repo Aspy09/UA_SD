@@ -1,11 +1,50 @@
 package wm;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
 public class App {
     // volatile: cambia el hilo del teclado y lee el hilo principal
     private static volatile boolean averiaSimulada = false;
+    private static String idWS = null; // lo dice el monitor al conectar
+
+
+    // Conecta con el monitor y responde a SALUD hasta perder la conexion. no tira excepciones
+    private static void atenderMonitor(String ip, int puerto) {
+        try (Socket socketMonitor = new Socket()) {
+            socketMonitor.connect(new InetSocketAddress(ip, puerto), 3000);
+            socketMonitor.setSoTimeout(5000); // el monitor pregunta cada 1ss. Con 5s sin nada se da por perdido
+            Protocolo protocolo = new Protocolo(socketMonitor);
+
+            // Saludo e identificacion
+            if (!protocolo.enviarENQ() || !protocolo.enviarTrama("CONECTAR")) {
+                System.out.println("El Monitor no respondio al saludo");
+                return;
+            }
+            String respuesta = protocolo.recibirTrama();
+            if (respuesta == null || !respuesta.startsWith("ID#")) {
+                System.out.println("El Monitor rechazo la conexion: " + respuesta);
+                return;
+            }
+            idWS = respuesta.split("#")[1];
+            System.out.println("Conectado al Monitor. Soy la estacion " + idWS
+                    + ". Pulsa Enter para simular/resolver una averia.");
+
+            // Responder a cada comprobacion de salud
+            String mensaje;
+            while ((mensaje = protocolo.recibirTrama()) != null) {
+                if (mensaje.startsWith("SALUD#")) {
+                    protocolo.enviarTrama((averiaSimulada ? "KO#" : "OK#") + idWS);
+                }
+            }
+            System.out.println("El Monitor cerro la conexion");
+
+        } catch (IOException e) {
+            System.out.println("Monitor no disponible (" + e.getMessage() + ")");
+        }
+    }
 
     public static void main(String[] args) {
         // Formato del PDF: <ip_broker:puerto> <ip_monitor:puerto> (el broker se usara con Kafka)
@@ -32,34 +71,18 @@ public class App {
         teclado.setDaemon(true);
         teclado.start();
 
-        try (Socket socketMonitor = new Socket(monitor[0], Integer.parseInt(monitor[1]))) {
-            Protocolo protocolo = new Protocolo(socketMonitor);
+        String ipMonitor = monitor[0];
+        int puertoMonitor = Integer.parseInt(monitor[1]);
 
-            // Saludo e identificacion
-            if (!protocolo.enviarENQ()) {
-                System.out.println("El Monitor no respondio al saludo");
+        // Si perdemos al monitor esperamos 3s y volvemos a intentar
+        while (true) {
+            atenderMonitor(ipMonitor, puertoMonitor);
+            System.out.println("Reintentando conectar con el Monitor en 3 s...");
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
                 return;
             }
-            protocolo.enviarTrama("CONECTAR");
-            String respuesta = protocolo.recibirTrama();
-            if (respuesta == null || !respuesta.startsWith("ID#")) {
-                System.out.println("El Monitor rechazo la conexion: " + respuesta);
-                return;
-            }
-            String idWS = respuesta.split("#")[1];
-            System.out.println("Soy la estacion " + idWS + ". Pulsa Enter para simular/resolver una averia.");
-
-            // Responder a cada comprobacion de salud
-            String mensaje;
-            while ((mensaje = protocolo.recibirTrama()) != null) {
-                if (mensaje.startsWith("SALUD#")) {
-                    protocolo.enviarTrama((averiaSimulada ? "KO#" : "OK#") + idWS);
-                }
-            }
-            System.out.println("El Monitor cerro la conexion");
-
-        } catch (Exception e) {
-            System.out.println("Error con el Monitor: " + e.getMessage());
         }
     }
 }
