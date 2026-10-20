@@ -5,6 +5,7 @@ import java.net.Socket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 public class App {
 
     // Datos de la estacion (llegan por argumento)
@@ -12,6 +13,12 @@ public class App {
     private static int puertoCentral;
     private static String idWS;
     private static String ubicacion;
+    private static long ultimoIntento = 0; // para no reintentar mas de una vez cada 5s
+
+    // enAveria = lo que le pasa al engine
+    // averiaAvisada = lo que cree central
+    private static boolean enAveria = false;
+    private static boolean averiaAvisada = false;
 
     // Conexion con central: null mientras no estemos conectados
     private static Socket socketCentral = null;
@@ -26,6 +33,9 @@ public class App {
     // Conecta con central, saluda y se registra
     // Devuelve true si central nos acepta. Nunca tira excepciones
     private static boolean conectarCentral() {
+
+        ultimoIntento = System.currentTimeMillis();
+
         try {
             Socket s = new Socket();
             s.connect(new InetSocketAddress(ipCentral, puertoCentral), 3000); // max 3s para conectar
@@ -48,6 +58,9 @@ public class App {
             socketCentral = s;
             central = p;
             System.out.println("Estacion " + idWS + " registrada en CENTRAL");
+
+            averiaAvisada = false; // central nos acaba de registrar como DISPONIBLE
+
             return true;
         } catch (IOException e) {
             System.out.println("CENTRAL no disponible (" + e.getMessage() + ")");
@@ -55,6 +68,74 @@ public class App {
         }
     }
 
+    // Central nunca escribe sin que preguntemos nosotros, asi que si al leer
+    // nos pasa -1 o un error, es porque se cerró
+    private static boolean centralViva() {
+        try {
+            socketCentral.setSoTimeout(1); // mirar sin quedarnos esperando
+            return socketCentral.getInputStream().read() != -1;
+        } catch (SocketTimeoutException e) {
+            return true; // no habia nada que leer: la conexion sigue abierta
+        } catch (IOException e) {
+            return false;
+        } finally {
+            try {
+                socketCentral.setSoTimeout(5000); // volver al timeout normal
+            } catch (IOException e) {
+                // el socket ya esta cerrado
+            }
+        }
+    }
+
+    // Cierra la conexion con central y deja los atributos a null
+    private static void cerrarCentral() {
+        try {
+            if (socketCentral != null) socketCentral.close();
+        } catch (IOException e) {
+            // ya estaba cerrado
+        }
+        socketCentral = null;
+        central = null;
+    }
+
+    // Envia un aviso a central y muestra su respuesta. Nunca lanza excepciones.
+    private static boolean avisarCentral(String mensaje) {
+        try {
+            if (!central.enviarTrama(mensaje)) return false;
+            String respuesta = central.recibirTrama();
+            System.out.println("CENTRAL respondio a " + mensaje + ": " + respuesta);
+            return respuesta != null;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    // Se llama una vez por segundo. Comprueba la conexion, reconecta si hace falta
+    // y avisa a central si el estado de averia ccambió. Nunca lanza excepciones.
+    private static void mantenerCentral() {
+        // 1) Si estabamos conectados, comprueba que central sigue ahi
+        if (central != null && !centralViva()) {
+            System.out.println("Conexion con CENTRAL perdida. Reintentando cada 5s ...");
+            cerrarCentral();
+        }
+
+        // 2) Si no estamos conectados,reintenta (max cada 5 s)
+        if (central == null) {
+            if (System.currentTimeMillis() - ultimoIntento < 5000) return;
+            if (!conectarCentral()) return;
+        }
+
+        // 3) Avisar solo si lo que sabe central no coincide con la realidad
+        if (enAveria != averiaAvisada) {
+            String mensaje = (enAveria ? "AVERIA#" : "RESUELTO#") + idWS;
+            if (avisarCentral(mensaje)) {
+                averiaAvisada = enAveria;
+            } else {
+                System.out.println("No se pudo avisar a CENTRAL de " + mensaje);
+                cerrarCentral();
+            }
+        }
+    }
 
     // ************************** MAIN **************************
 
@@ -83,7 +164,6 @@ public class App {
             // 3) Servidor para el engine
             int puertoEngine = Integer.parseInt(args[0]);
             ServerSocket servidorEngine = new ServerSocket(puertoEngine);
-            boolean enAveria = false;
 
             while (true) {
                 System.out.println("Esperando al Engine en el puerto " + puertoEngine + "...");
