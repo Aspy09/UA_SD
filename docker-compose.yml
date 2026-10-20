@@ -1,0 +1,69 @@
+# Despliegue local completo: docker compose up --build
+services:
+
+  # Gestor de colas (un solo nodo, modo KRaft)
+  kafka:
+    image: apache/kafka:4.3.1
+    ports:
+      - "9092:9092"        # para programas que corren fuera de docker
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # dos "puertas": una para los contenedores (kafka:19092) y otra para fuera (9092)
+      KAFKA_LISTENERS: INTERNO://:19092,EXTERNO://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNO://kafka:19092,EXTERNO://${KAFKA_HOST:-localhost}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNO:PLAINTEXT,EXTERNO:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNO
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:           # "sano" cuando ya acepta conexiones
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:19092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  central:
+    build: ./WM_Central
+    command: ["9000", "kafka:19092"]
+    ports:
+      - "9000:9000"
+    volumes:
+      - central-datos:/data   # la bd sqlite sobrevive a los reinicios
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+
+  # Una estacion de ejemplo: WS-01
+  monitor:
+    build: ./WM_WS/WM_WS_M
+    command: ["8001", "central:9000", "WS-01", "Parque Norte"]
+    depends_on:
+      - central
+
+  # El engine tiene menu: se usa con  docker compose run --rm engine
+  engine:
+    build: ./WM_WS/WM_WS_E
+    command: ["kafka:19092", "monitor:8001"]
+    stdin_open: true
+    tty: true
+    depends_on:
+      - monitor
+    profiles: ["interactivo"]
+
+  # El operario tambien tiene menu:  docker compose run --rm fo
+  fo:
+    build: ./WM_FO
+    command: ["kafka:19092", "FO-01"]
+    stdin_open: true
+    tty: true
+    depends_on:
+      - central
+    profiles: ["interactivo"]
+
+volumes:
+  central-datos:
