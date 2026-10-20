@@ -24,11 +24,7 @@ public class App {
     private static Socket socketCentral = null;
     private static Protocolo central = null;
 
-    // Envia un aviso a central y muestra su respuesta
-    private static void avisarCentral(Protocolo central, String mensaje) throws Exception {
-        if (!central.enviarTrama(mensaje)) throw new Exception("CENTRAL no confirmo el mensaje");
-        System.out.println("CENTRAL respondio a " + mensaje + ": " + central.recibirTrama());
-    }
+    private static boolean registroRechazado = false; // central nos dijo KO (por ejm ID repetido)
 
     // Conecta con central, saluda y se registra
     // Devuelve true si central nos acepta. Nunca tira excepciones
@@ -51,6 +47,7 @@ public class App {
             if (respuesta == null || !respuesta.startsWith("OK#")) {
                 System.out.println("Registro rechazado: " + respuesta);
                 s.close();
+                registroRechazado = true;
                 return false;
             }
 
@@ -137,15 +134,55 @@ public class App {
         }
     }
 
+    // Atiende a un engine hasta que deja de responder
+    private static void atenderEngine(Socket socketEngine) {
+        try (socketEngine) {
+            socketEngine.setSoTimeout(3000); // si tarda mas de 3s, salta SocketTimeoutException
+            Protocolo engine = new Protocolo(socketEngine);
+
+            // Saludo e identificacion
+            if (!engine.esperarENQ() || !"CONECTAR".equals(engine.recibirTrama())) {
+                System.out.println("Conexion rechazada: no es un Engine");
+                return;
+            }
+            // Si central aun no nos aceptó el engine tiene que esperar
+            if (central == null) {
+                engine.enviarTrama("KO#NO_REGISTRADA");
+                System.out.println("Engine rechazado: la estacion aun no esta registrada en CENTRAL");
+                return;
+            }
+            engine.enviarTrama("ID#" + idWS + "#" + ubicacion);
+            System.out.println("Engine conectado");
+
+            // Comprobacion de salud cada segundo
+            while (true) {
+                engine.enviarTrama("SALUD#" + idWS);
+                String r = engine.recibirTrama();
+                if (r == null) {
+                    System.out.println("El Engine cerro la conexion");
+                    return;
+                }
+                enAveria = !r.startsWith("OK#");
+                mantenerCentral();
+                Thread.sleep(1000);
+            }
+        } catch (SocketTimeoutException e) {
+            System.out.println("Engine sin respuesta");
+        } catch (IOException e) {
+            System.out.println("Engine perdido: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     // ************************** MAIN **************************
 
-    public static void main(String[] args) {
+        public static void main(String[] args) {
         // 1) Argumentos
         if (args.length < 4) {
             System.out.println("Uso: java wm.App <puerto_engine> <ip_central:puerto> <id_ws> <ubicacion>");
             System.exit(1);
         }
-
         String[] datosCentral = args[1].split(":");
         if (datosCentral.length != 2) {
             System.out.println("Error: la central debe indicarse como IP:PUERTO");
@@ -155,68 +192,33 @@ public class App {
         puertoCentral = Integer.parseInt(datosCentral[1]);
         idWS = args[2];
         ubicacion = args[3];
+        int puertoEngine = Integer.parseInt(args[0]);
 
-        try {
-            
-            // 2) Conectar y registrarse en central
-            if (!conectarCentral()) return;
+        // 2) Primer registro. Si central no esta, se reintentara mas tarde
+        // pero si nos dice KO terminamos
+        conectarCentral();
+        if (registroRechazado) System.exit(1);
 
-            // 3) Servidor para el engine
-            int puertoEngine = Integer.parseInt(args[0]);
-            ServerSocket servidorEngine = new ServerSocket(puertoEngine);
+        // 3) Servidor para el engine. accept() espera como mucho 1s,
+        // asi aunque no haya engine se sigue vigilando la conexion con central
+        try (ServerSocket servidorEngine = new ServerSocket(puertoEngine)) {
+            servidorEngine.setSoTimeout(1000);
+            System.out.println("Esperando al Engine en el puerto " + puertoEngine + "...");
 
             while (true) {
-                System.out.println("Esperando al Engine en el puerto " + puertoEngine + "...");
-                Socket socketEngine = servidorEngine.accept();
-                socketEngine.setSoTimeout(3000); // si el engine tarda mas de 3segs salta la excepcion
-                Protocolo engine = new Protocolo(socketEngine);
-
+                mantenerCentral();
                 try {
-                    // 3.1) Saludo e identificacion del engine
-                    if (!engine.esperarENQ() || !"CONECTAR".equals(engine.recibirTrama())) {
-                        System.out.println("Conexion rechazada: no es un Engine");
-                        socketEngine.close();
-                        continue;
-                    }
-                    engine.enviarTrama("ID#" + idWS + "#" + ubicacion);
-                    System.out.println("Engine conectado");
-
-                    // 3.2) Comprobacion de salud cada segundo
-                    while (true) {
-                        engine.enviarTrama("SALUD#" + idWS);
-                        String r = engine.recibirTrama();
-                        if (r == null) throw new Exception("el Engine cerro la conexion");
-
-                        boolean ok = r.startsWith("OK#");
-                        if (!ok && !enAveria) {
-                            avisarCentral(central, "AVERIA#" + idWS);
-                            enAveria = true;
-                        } else if (ok && enAveria) {
-                            avisarCentral(central, "RESUELTO#" + idWS);
-                            enAveria = false;
-                        }
-                        Thread.sleep(1000);
-                    }
-                } catch (java.net.SocketTimeoutException | java.io.EOFException e) {
-                    System.out.println("Engine sin respuesta");
-                } catch (Exception e) {
-                    if (e.getMessage() != null && e.getMessage().contains("Engine")) {
-                        System.out.println("Engine perdido: " + e.getMessage());
-                    } else {
-                        throw e; // problema con central. Lo gestiona el catch de afuera
-                    }
+                    Socket socketEngine = servidorEngine.accept();
+                    atenderEngine(socketEngine); // vuelve cuando perdemos al engine
+                    enAveria = true;              // sin engine la estacion no funciona
+                    mantenerCentral();
+                    System.out.println("Esperando al Engine en el puerto " + puertoEngine + "...");
+                } catch (SocketTimeoutException e) {
+                    // en 1s no ha llegado ningun engine, entonces damos otra vuelta
                 }
-
-                // Si llegamos aca es porque el Engine fallo. Avisamos y esperamos a otro
-                if (!enAveria) {
-                    avisarCentral(central, "AVERIA#" + idWS);
-                    enAveria = true;
-                }
-                socketEngine.close();
             }
-
-        } catch (Exception e) {
-            System.out.println("Error con CENTRAL: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("No se puede abrir el puerto " + puertoEngine + ": " + e.getMessage());
         }
     }
 }
