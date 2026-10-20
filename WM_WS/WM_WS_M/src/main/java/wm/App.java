@@ -4,6 +4,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 public class App {
 
+    // Datos de la estacion (llegan por argumento)
+    private static String ipCentral;
+    private static int puertoCentral;
+    private static String idWS;
+    private static String ubicacion;
+
+    // Conexion con central: null mientras no estemos conectados
+    private static Socket socketCentral = null;
+    private static Protocolo central = null;
+
     // Envia un aviso a central y muestra su respuesta
     private static void avisarCentral(Protocolo central, String mensaje) throws Exception {
         if (!central.enviarTrama(mensaje)) throw new Exception("CENTRAL no confirmo el mensaje");
@@ -17,13 +27,13 @@ public class App {
             System.exit(1);
         }
 
-        String[] central = args[1].split(":");
-        if (central.length != 2) {
+        String[] datosCentral = args[1].split(":");
+        if (datosCentral.length != 2) {
             System.out.println("Error: la central debe indicarse como IP:PUERTO");
             System.exit(1);
         }
-        String ipCentral = central[0];
-        int puertoCentral = Integer.parseInt(central[1]);
+        String ipCentral = datosCentral[0];
+        int puertoCentral = Integer.parseInt(datosCentral[1]);
         String idWS = args[2];
         String ubicacion = args[3];
 
