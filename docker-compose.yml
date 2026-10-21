@@ -44,6 +44,7 @@ services:
     command: ["8001", "central:9000", "WS-01", "Parque Norte"]
     depends_on:
       - central
+    profiles: ["interactivo"]
 
   # El engine tiene menu: se usa con  docker compose run --rm engine
   engine:
@@ -66,4 +67,4 @@ services:
     profiles: ["interactivo"]
 
 volumes:
-  central-datos:
+  central-datos:  
