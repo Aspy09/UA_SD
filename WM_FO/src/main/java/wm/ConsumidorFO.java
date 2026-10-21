@@ -11,6 +11,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 // hilo que lee las notificaciones para este operario y el estado de todas las estaciones
@@ -30,12 +31,14 @@ public class ConsumidorFO extends Thread {
         //1.configurar el consumidor
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, idFO); // cada operario su grupo 
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, idFO); // cada operario su grupo (readme)
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        // si el operario muere sin despedirse, kafka lo expulsa a los 10 s (por defecto 45)
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000);
 
         try (KafkaConsumer<String, String> consumidor = new KafkaConsumer<>(props)) {
-            //2.dos topics, cada uno leido desde un lugar distinto
+            //2.dos topics, cada uno leido desde un sitio distinto
             consumidor.subscribe(List.of(KafkaFO.NOTIFICACIONES, KafkaFO.ESTACIONES),
                     new ConsumerRebalanceListener() {
                 public void onPartitionsAssigned(Collection<TopicPartition> particiones) {
@@ -46,16 +49,32 @@ public class ConsumidorFO extends Thread {
                             consumidor.seekToEnd(List.of(p));       // notificaciones: solo las nuevas
                         }
                     }
-                    listo.countDown();
+                    // los seekTo son "perezosos": position() calcula la posicion ya
+                    for (TopicPartition p : particiones) {
+                        consumidor.position(p);
+                    }
+                    // solo estamos listos si kafka nos dio particiones de verdad
+                    if (!particiones.isEmpty()) listo.countDown();
                 }
                 public void onPartitionsRevoked(Collection<TopicPartition> particiones) {
                 }
             });
 
+            // al cerrar el programa (fin normal, Ctrl+C o docker stop) despedirse del grupo
+            Thread hiloConsumidor = Thread.currentThread();
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                consumidor.wakeup(); // hace que poll() lance WakeupException
+                try {
+                    hiloConsumidor.join(3000); // esperar a que se cierre bien
+                } catch (InterruptedException e) {
+                    // nada
+                }
+            }));
+
             //3.leer mensajes todo el rato
             while (true) {
                 for (ConsumerRecord<String, String> m : consumidor.poll(Duration.ofSeconds(1))) {
-                    //asi un mensaje mal escrito no para todo
+                    // try dentro del for: un mensaje mal escrito no debe parar el hilo
                     try {
                         if (m.topic().equals(KafkaFO.ESTACIONES)) {
                             App.actualizarEstacion(m.value());
@@ -67,6 +86,8 @@ public class ConsumidorFO extends Thread {
                     }
                 }
             }
+        } catch (WakeupException e) {
+            // cierre normal. try-with-resources hace close() y kafka nos saca del grupo
         } catch (Exception e) {
             System.out.println("[KAFKA] Error en el consumidor: " + e);
         }

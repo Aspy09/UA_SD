@@ -92,7 +92,7 @@ public class App {
                 // si kafka aun no existe o no se encuentra, reintentar en vez de morir
         while (true) {
             try {
-                KafkaEngine.iniciar(args[0]);
+                KafkaFO.iniciar(args[0]);
                 break;
             } catch (Exception e) {
                 System.out.println("Kafka no disponible (" + args[0] + "). Reintentando en 5 s...");
