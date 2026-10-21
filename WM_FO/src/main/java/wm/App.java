@@ -66,7 +66,7 @@ public class App {
         System.out.println("\n--- Fichero terminado");
     }
 
-    // Espera el RESUMEN o DENEGADO de esa estacion, como mucho la duracion del riego + 60 s
+    // Espera el RESUMEN o DENEGADO de la estacion, como mucho la duracion del riego + 60s
     private static boolean esperarFin(String idWS, int segundos) throws InterruptedException {
         long limite = System.currentTimeMillis() + (segundos + 60) * 1000L;
         while (true) {
@@ -89,7 +89,20 @@ public class App {
 
         // 2) Kafka solo va a mostrar sus errores
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
-        KafkaFO.iniciar(args[0]);
+                // si kafka aun no existe o no se encuentra, reintentar en vez de morir
+        while (true) {
+            try {
+                KafkaEngine.iniciar(args[0]);
+                break;
+            } catch (Exception e) {
+                System.out.println("Kafka no disponible (" + args[0] + "). Reintentando en 5 s...");
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ie) {
+                    return;
+                }
+            }
+        }
         System.out.println("Operario " + idFO + " usando Kafka en " + args[0]);
 
         // 3) Hilo que escucha kafka, esperamos a que este listo antes de mostrar el menu

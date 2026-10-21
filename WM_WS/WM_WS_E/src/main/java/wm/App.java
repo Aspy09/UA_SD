@@ -124,7 +124,20 @@ public class App {
 
         // que kafka solo muestre sus errores, no todos sus logs
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
-        KafkaEngine.iniciar(args[0]);
+                // si kafka aun no existe o no se encuentra, reintentar en vez de morir
+        while (true) {
+            try {
+                KafkaEngine.iniciar(args[0]);
+                break;
+            } catch (Exception e) {
+                System.out.println("Kafka no disponible (" + args[0] + "). Reintentando en 5 s...");
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ie) {
+                    return;
+                }
+            }
+        }
 
         String ipMonitor = monitor[0];
         int puertoMonitor = Integer.parseInt(monitor[1]);
