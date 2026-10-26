@@ -10,10 +10,15 @@ public class App
         //1.Comprueba que me han pasado el puerto y kafka por argumento
         // (args[0] y args[1]) y convierte el puerto a int
 
-        if (args.length < 2) throw new  IllegalAccessException("uso: java -jar WM_Central.jar <puerto> <ip_kafka:puerto>");
+        if (args.length < 2) throw new  IllegalAccessException("uso: java -jar WM_Central.jar <puerto> <ip_kafka:puerto> [puerto_web]");
 
         int puerto =Integer.parseInt(args[0]);
-        String brokerKafka = args[1];
+        String brokerKafka = args[1]; //el servidor de kafka
+
+        // puerto del panel web: 3er argumento, si no la variable PORT (la pone railway), si no 8080
+        int puertoWeb = 8080;
+        if (args.length >= 3) puertoWeb = Integer.parseInt(args[2]);
+        else if (System.getenv("PORT") != null) puertoWeb = Integer.parseInt(System.getenv("PORT"));
 
         // que kafka solo muestre sus errores, no todos sus logs
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
@@ -38,7 +43,16 @@ public class App
             return;
         }
 
-        //4.Crear un server socket en ese puerto
+        //4.arrancar el panel web
+        try {
+            PanelWeb.iniciar(puertoWeb);
+            System.out.println("Panel web en http://localhost:" + puertoWeb);
+        } catch (Exception e) {
+            System.out.println("Error al arrancar el panel web: " + e.toString());
+            return;
+        }
+
+        //5.Crear un server socket en ese puerto
         
         ServerSocket skServer = null;
 
@@ -51,7 +65,7 @@ public class App
 
         System.out.println("Central escuchando en el puerto " + puerto);
 
-        //5. esperar una conexion de un cliente
+        //6. esperar una conexion de un cliente
         for(;;){
             Socket skCliente = null;
             try {
