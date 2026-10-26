@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WM_Central · Panel de riego</title>
+<style>
+  :root {
+    --fondo: #eef2f0;
+    --tarjeta: #ffffff;
+    --texto: #18211d;
+    --suave: #5f6f67;
+    --borde: #dbe3df;
+    --verde: #2e9e5b;
+    --verde-claro: #e3f5ea;
+    --rojo: #d93a35;
+    --rojo-claro: #fde8e7;
+    --naranja: #ec8a12;
+    --naranja-claro: #fdf0de;
+    --gris: #8a958f;
+    --gris-claro: #eef0ef;
+    --azul: #1f6fb2;
+    --cabecera: #14332a;
+    --radio: 12px;
+    --sombra: 0 1px 2px rgba(20, 40, 30, .06), 0 4px 14px rgba(20, 40, 30, .06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--fondo); color: var(--texto); }
+
+  /* ---------- cabecera ---------- */
+  header {
+    background: var(--cabecera); color: #fff;
+    padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center; justify-content: space-between;
+  }
+  .marca { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 38px; height: 38px; border-radius: 10px; background: #2e9e5b; display: grid; place-items: center; font-size: 20px; }
+  header h1 { margin: 0; font-size: 19px; font-weight: 650; }
+  header p { margin: 2px 0 0; font-size: 13px; color: #a9c4b8; }
+  .conexion { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d5e6de; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; background: #4cd787; box-shadow: 0 0 0 4px rgba(76, 215, 135, .2); }
+  .conexion.caida .punto { background: #ff6b66; box-shadow: 0 0 0 4px rgba(255, 107, 102, .25); }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 32px; }
+
+  /* ---------- resumen ---------- */
+  .resumen { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 800px) { .resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 14px 16px; border-left: 5px solid var(--c); }
+  .kpi .num { font-size: 28px; font-weight: 700; line-height: 1; }
+  .kpi .nombre { font-size: 13px; color: var(--suave); margin-top: 6px; }
+
+  .contenido { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  @media (max-width: 1000px) { .contenido { grid-template-columns: minmax(0, 1fr); } }
+
+  h2 { margin: 0 0 12px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); display: flex; justify-content: space-between; align-items: baseline; }
+  h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+  /* ---------- tarjetas de estaciones ---------- */
+  .estaciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .ws {
+    background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra);
+    border: 2px solid transparent; overflow: hidden; cursor: pointer; transition: transform .12s, border-color .12s;
+    display: flex; flex-direction: column; /* para que el color llegue hasta abajo */
+  }
+  .ws:hover { transform: translateY(-2px); }
+  .ws.elegida { border-color: var(--azul); }
+  .ws .franja { padding: 10px 14px; color: #fff; font-weight: 650; font-size: 13px; letter-spacing: .03em; display: flex; justify-content: space-between; }
+  .ws .cuerpo { padding: 12px 14px 14px; flex: 1; }
+  .ws .id { font-size: 20px; font-weight: 700; }
+  .ws .ubicacion { color: var(--suave); font-size: 14px; margin-top: 2px; }
+  .ws .datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .ws .dato { background: var(--fondo); border-radius: 8px; padding: 8px 10px; }
+  .ws .dato b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .ws .dato span { font-size: 12px; color: var(--suave); }
+  .ws .operario { grid-column: 1 / -1; }
+  .ws .nota { margin-top: 12px; font-size: 13px; color: var(--suave); }
+
+  /* colores de cada estado (enunciado) */
+  .DISPONIBLE .franja        { background: var(--verde); }
+  .REGANDO .franja           { background: var(--verde); animation: parpadeo 1s infinite; }
+  .FUGA .franja              { background: var(--rojo); }
+  .FUERA_DE_SERVICIO .franja { background: var(--naranja); }
+  .DESCONECTADA .franja      { background: var(--gris); }
+  .REGANDO .cuerpo           { background: var(--verde-claro); animation: parpadeo-suave 1s infinite; }
+  .FUGA .cuerpo              { background: var(--rojo-claro); }
+  .FUERA_DE_SERVICIO .cuerpo { background: var(--naranja-claro); }
+  .DESCONECTADA .cuerpo      { background: var(--gris-claro); }
+  .DESCONECTADA .id, .DESCONECTADA .ubicacion { opacity: .65; }
+  @keyframes parpadeo { 50% { background: #7fd3a2; } }
+  @keyframes parpadeo-suave { 50% { background: #f6fcf8; } }
+
+  .vacio { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 32px; text-align: center; color: var(--suave); }
+
+  /* ---------- panel lateral ---------- */
+  .lateral { display: grid; gap: 20px; }
+  .caja { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 16px; }
+  .elegida-info { background: var(--fondo); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
+  .elegida-info b { font-size: 16px; }
+  label { display: block; font-size: 13px; color: var(--suave); margin: 10px 0 6px; }
+  select, input { width: 100%; padding: 9px 10px; font-size: 14px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: var(--texto); }
+  .botones { display: grid; gap: 8px; margin-top: 14px; }
+  button { padding: 11px; font-size: 14px; font-weight: 600; border: 0; border-radius: 8px; color: #fff; cursor: pointer; transition: filter .12s; }
+  button:hover { filter: brightness(1.08); }
+  #bRiego { background: var(--verde); }
+  #bBloquear { background: var(--naranja); }
+  #bActivar { background: var(--azul); }
+
+  .leyenda { display: grid; gap: 6px; font-size: 13px; }
+  .leyenda div { display: flex; align-items: center; gap: 8px; }
+  .muestra { width: 14px; height: 14px; border-radius: 4px; }
+
+  #mensajes { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 13px; }
+  #mensajes li { padding: 7px 0 7px 10px; border-left: 3px solid var(--borde); margin-bottom: 4px; }
+  #mensajes li .hora { color: var(--suave); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  #mensajes li.rojo { border-color: var(--rojo); }
+  #mensajes li.naranja { border-color: var(--naranja); }
+  #mensajes li.verde { border-color: var(--verde); }
+  #mensajes li.gris { border-color: var(--gris); }
+  #mensajes li.azul { border-color: var(--azul); }
+
+  /* aviso que sale abajo al mandar una orden */
+  #aviso {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--cabecera); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .2); opacity: 0; pointer-events: none; transition: all .25s;
+  }
+  #aviso.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #aviso.error { background: var(--rojo); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marca">
+    <div class="logo">💧</div>
+    <div>
+      <h1>WaterManagement · Central</h1>
+      <p>Red de riego de parques y jardines</p>
+    </div>
+  </div>
+  <div class="conexion" id="conexion"><span class="punto"></span><span id="textoConexion">Conectando…</span></div>
+</header>
+
+<main>
+  <div class="resumen" id="resumen"></div>
+
+  <div class="contenido">
+    <section>
+      <h2>Estaciones de riego <small>Haz clic en una para seleccionarla</small></h2>
+      <div class="estaciones" id="estaciones"></div>
+    </section>
+
+    <aside class="lateral">
+      <div class="caja">
+        <h2>Órdenes</h2>
+        <div class="elegida-info" id="elegidaInfo"></div>
+        <label for="ws">Estación</label>
+        <select id="ws"></select>
+        <label for="segundos">Duración del riego (segundos)</label>
+        <input id="segundos" type="number" min="1" value="60">
+        <div class="botones">
+          <button id="bRiego" onclick="orden('riego')">▶ Iniciar riego</button>
+          <button id="bBloquear" onclick="orden('bloquear')">⛔ Bloquear</button>
+          <button id="bActivar" onclick="orden('activar')">✔ Activar</button>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h2>Leyenda</h2>
+        <div class="leyenda">
+          <div><span class="muestra" style="background:var(--verde)"></span>Disponible</div>
+          <div><span class="muestra" style="background:var(--verde);animation:parpadeo 1s infinite"></span>Regando</div>
+          <div><span class="muestra" style="background:var(--rojo)"></span>Fuga</div>
+          <div><span class="muestra" style="background:var(--naranja)"></span>Fuera de servicio</div>
+          <div><span class="muestra" style="background:var(--gris)"></span>Desconectada</div>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h2>Mensajes</h2>
+        <ul id="mensajes"></ul>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div id="aviso"></div>
+
+<script>
+  // nombres bonitos y colores de cada estado
+  const ESTADOS = {
+    DISPONIBLE:        { nombre: 'Disponible',        color: 'var(--verde)' },
+    REGANDO:           { nombre: 'Regando',           color: 'var(--verde)' },
+    FUGA:              { nombre: 'Fuga',              color: 'var(--rojo)' },
+    FUERA_DE_SERVICIO: { nombre: 'Fuera de Servicio', color: 'var(--naranja)' },
+    DESCONECTADA:      { nombre: 'Desconectada',      color: 'var(--gris)' }
+  };
+
+  let estaciones = [];
+
+  // escapar el texto que viene de fuera (ubicaciones...) para que no se cuele html
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // pedir el estado a la central cada segundo
+  async function actualizar() {
+    try {
+      const r = await fetch('/api/estado');
+      const datos = await r.json();
+      estaciones = datos.estaciones;
+      conexion(true);
+      pintarResumen();
+      pintarEstaciones();
+      pintarSelector();
+      pintarMensajes(datos.mensajes);
+    } catch (e) {
+      conexion(false);
+    }
+  }
+
+  function conexion(ok) {
+    document.getElementById('conexion').classList.toggle('caida', !ok);
+    const hora = new Date().toLocaleTimeString('es-ES');
+    document.getElementById('textoConexion').textContent = ok ? 'Conectado · ' + hora : 'Sin conexión con la central';
+  }
+
+  function pintarResumen() {
+    const cuenta = {};
+    for (const ws of estaciones) cuenta[ws.estado] = (cuenta[ws.estado] || 0) + 1;
+    document.getElementById('resumen').innerHTML = Object.entries(ESTADOS).map(([clave, e]) =>
+      '<div class="kpi" style="--c:' + e.color + '"><div class="num">' + (cuenta[clave] || 0) + '</div>' +
+      '<div class="nombre">' + e.nombre + '</div></div>'
+    ).join('');
+  }
+
+  function pintarEstaciones() {
+    const cont = document.getElementById('estaciones');
+    if (estaciones.length === 0) {
+      cont.innerHTML = '<div class="vacio">Todavía no hay ninguna estación registrada.<br>Arranca un Monitor (WM_WS_M) para darla de alta.</div>';
+      return;
+    }
+    const elegida = document.getElementById('ws').value;
+    cont.innerHTML = estaciones.map(ws => {
+      const e = ESTADOS[ws.estado] || { nombre: ws.estado };
+      let cuerpo = '';
+      if (ws.estado === 'REGANDO') {
+        cuerpo =
+          '<div class="datos">' +
+            '<div class="dato"><b>' + ws.caudal.toFixed(1) + '</b><span>L/min</span></div>' +
+            '<div class="dato"><b>' + ws.volumen.toFixed(1) + '</b><span>litros</span></div>' +
+            '<div class="dato operario"><b>' + esc(ws.operario || '-') + '</b><span>activado por</span></div>' +
+          '</div>';
+      } else {
+        const notas = {
+          DISPONIBLE: 'Esperando una solicitud de riego',
+          FUGA: 'Fuga detectada · riego bloqueado',
+          FUERA_DE_SERVICIO: 'Bloqueada por la central',
+          DESCONECTADA: 'Sin conexión con la estación'
+        };
+        cuerpo = '<div class="nota">' + (ws.operario ? 'Reservada por ' + esc(ws.operario) + ' · esperando confirmación' : (notas[ws.estado] || '')) + '</div>';
+      }
+      return '<div class="ws ' + ws.estado + (ws.id === elegida ? ' elegida' : '') + '" onclick="elegir(\'' + esc(ws.id) + '\')">' +
+               '<div class="franja"><span>' + e.nombre + '</span><span>' + (ws.estado === 'REGANDO' ? '💧' : '') + '</span></div>' +
+               '<div class="cuerpo"><div class="id">' + esc(ws.id) + '</div><div class="ubicacion">📍 ' + esc(ws.ubicacion) + '</div>' + cuerpo + '</div>' +
+             '</div>';
+    }).join('');
+  }
+
+  // rellenar el desplegable sin perder lo que habia elegido
+  function pintarSelector() {
+    const sel = document.getElementById('ws');
+    const elegida = sel.value;
+    const ids = ['TODAS'].concat(estaciones.map(ws => ws.id));
+    const iguales = sel.options.length === ids.length && [...sel.options].every((o, i) => o.value === ids[i]);
+    if (!iguales) {
+      sel.innerHTML = ids.map(id => '<option value="' + esc(id) + '">' + (id === 'TODAS' ? 'Todas las estaciones' : esc(id)) + '</option>').join('');
+      if (ids.includes(elegida)) sel.value = elegida;
+    }
+    pintarElegida();
+  }
+
+  function pintarElegida() {
+    const id = document.getElementById('ws').value;
+    const ws = estaciones.find(w => w.id === id);
+    document.getElementById('elegidaInfo').innerHTML = ws
+      ? '<b>' + esc(ws.id) + '</b> · ' + esc(ws.ubicacion) + '<br>' + (ESTADOS[ws.estado]?.nombre || ws.estado)
+      : '<b>Todas las estaciones</b><br>' + estaciones.length + ' registradas';
+  }
+
+  // al hacer clic en una tarjeta se selecciona en el desplegable
+  function elegir(id) {
+    document.getElementById('ws').value = id;
+    pintarEstaciones();
+    pintarElegida();
+  }
+  document.getElementById('ws').addEventListener('change', () => { pintarEstaciones(); pintarElegida(); });
+
+  // color de cada mensaje segun lo que dice
+  function colorMensaje(m) {
+    if (/FUGA|Denegado|Error|incorrect/i.test(m)) return 'rojo';
+    if (/FUERA_DE_SERVICIO|bloquea/i.test(m)) return 'naranja';
+    if (/DESCONECTADA/.test(m)) return 'gris';
+    if (/REGANDO|regar|terminado/i.test(m)) return 'azul';
+    if (/DISPONIBLE|activa|Nueva/i.test(m)) return 'verde';
+    return '';
+  }
+
+  function pintarMensajes(mensajes) {
+    document.getElementById('mensajes').innerHTML = mensajes.map(m => {
+      const hora = m.slice(1, 9);       // "[14:28:37] texto" -> "14:28:37"
+      const texto = m.slice(11);
+      return '<li class="' + colorMensaje(texto) + '"><span class="hora">' + esc(hora) + '</span>' + esc(texto) + '</li>';
+    }).join('') || '<li>Sin mensajes todavía</li>';
+  }
+
+  async function orden(accion) {
+    const ws = document.getElementById('ws').value;
+    const segundos = document.getElementById('segundos').value;
+    if (ws === 'TODAS' && accion === 'bloquear' && !confirm('¿Bloquear TODAS las estaciones?')) return;
+
+    try {
+      const url = '/api/orden?accion=' + accion + '&ws=' + encodeURIComponent(ws) + '&segundos=' + encodeURIComponent(segundos);
+      const r = await fetch(url, { method: 'POST' });
+      const texto = await r.text();
+      const nombres = { riego: 'Riego solicitado', bloquear: 'Bloqueo enviado', activar: 'Activación enviada' };
+      aviso(r.ok ? nombres[accion] + ' · ' + (ws === 'TODAS' ? 'todas las estaciones' : ws) : texto, !r.ok);
+    } catch (e) {
+      aviso('No se ha podido contactar con la central', true);
+    }
+    actualizar();
+  }
+
+  let temporizador;
+  function aviso(texto, error) {
+    const a = document.getElementById('aviso');
+    a.textContent = texto;
+    a.className = 'visible' + (error ? ' error' : '');
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => a.className = '', 3000);
+  }
+
+  actualizar();
+  setInterval(actualizar, 1000);
+</script>
+</body>
+</html>
