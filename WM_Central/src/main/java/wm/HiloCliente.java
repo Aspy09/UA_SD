@@ -2,6 +2,7 @@ package wm;
 
 import java.net.*;
 
+//esto seria un hilo por monitor conectado
 public class HiloCliente extends Thread {
     private Socket skCliente;
     private String idWS = null; // ID de la estacion de esta conexion (null hasta que se registre)
