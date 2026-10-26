@@ -20,7 +20,7 @@ public class Estaciones {
     // cambiar el estado y avisar a los fo por wm.estaciones
     private static void cambiarEstado(Estacion ws, EstadoWS nuevo) {
         ws.setEstado(nuevo);
-        System.out.println("[ESTADO] " + ws);
+        Mensajes.add(ws.toString());
         publicar(ws);
     }
 
@@ -43,18 +43,12 @@ public class Estaciones {
         if (ws == null) {
             ws = new Estacion(id, ubicacion);
             estaciones.put(id, ws);
-            System.out.println("[ALTA] Nueva estacion " + id + " en " + ubicacion);
+            Mensajes.add("Nueva estacion " + id + " en " + ubicacion);
         } else if (ws.getEstado() != EstadoWS.DESCONECTADA) {
             return "KO#" + id + "#YA_CONECTADA";
         }
         ws.setUbicacion(ubicacion);
-
-        // guardar en la bd, si falla la estacion sigue funcionando igual
-        try {
-            BaseDatos.guardarEstacion(ws);
-        } catch (SQLException e) {
-            System.out.println("[BD] Error guardando " + id + ": " + e.getMessage());
-        }
+        guardar(ws);
         cambiarEstado(ws, ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
         return "OK#" + id;
     }
@@ -76,6 +70,44 @@ public class Estaciones {
     public static synchronized void desconectar(String id) {
         Estacion ws = estaciones.get(id);
         cambiarEstado(ws, EstadoWS.DESCONECTADA);
+    }
+
+    // guardar en la bd, si falla la estacion sigue funcionando igual
+    private static void guardar(Estacion ws) {
+        try {
+            BaseDatos.guardarEstacion(ws);
+        } catch (SQLException e) {
+            Mensajes.add("Error guardando " + ws.getId() + " en la bd: " + e.getMessage());
+        }
+    }
+
+    // ordenes del panel (punto 11)
+
+    // bloquear: fuera de servicio aunque se desconecte y vuelva
+    public static synchronized boolean bloquear(String id) {
+        Estacion ws = estaciones.get(id);
+        if (ws == null) return false;
+        ws.setBloqueada(true);
+        guardar(ws);
+        // el engine para el riego si estaba regando
+        KafkaCentral.enviar(KafkaCentral.ORDENES, id, "BLOQUEAR#" + id);
+        // si tiene fuga o esta desconectada se queda asi, al volver ya saldra fuera de servicio
+        if (ws.getEstado() == EstadoWS.DISPONIBLE || ws.getEstado() == EstadoWS.REGANDO) {
+            cambiarEstado(ws, EstadoWS.FUERA_DE_SERVICIO);
+        }
+        return true;
+    }
+
+    public static synchronized boolean activar(String id) {
+        Estacion ws = estaciones.get(id);
+        if (ws == null) return false;
+        ws.setBloqueada(false);
+        guardar(ws);
+        KafkaCentral.enviar(KafkaCentral.ORDENES, id, "ACTIVAR#" + id);
+        if (ws.getEstado() == EstadoWS.FUERA_DE_SERVICIO) {
+            cambiarEstado(ws, EstadoWS.DISPONIBLE);
+        }
+        return true;
     }
 
     // riegos
