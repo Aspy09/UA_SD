@@ -28,9 +28,12 @@ services:
 
   central:
     build: ./WM_Central
-    command: ["9000", "kafka:19092"]
+    environment:
+      PUERTO_SOCKETS: 9000
+      KAFKA_BROKER: kafka:19092
     ports:
       - "9000:9000"
+      - "8080:8080"         # panel web: http://localhost:8080
     volumes:
       - central-datos:/data   # la bd sqlite sobrevive a los reinicios
     depends_on:
