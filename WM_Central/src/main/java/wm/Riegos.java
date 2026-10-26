@@ -14,7 +14,7 @@ public class Riegos {
             if (c[0].equals("RIEGO") && c.length == 4) {
                 solicitarRiego(c[1], c[2], Integer.parseInt(c[3]));
             } else {
-                System.out.println("[RIEGO] Solicitud con formato incorrecto: " + mensaje);
+                Mensajes.add("Solicitud con formato incorrecto: " + mensaje);
             }
             return;
         }
@@ -35,13 +35,13 @@ public class Riegos {
                 finRiego(idWS, c[2], c[3], c[4]);
                 break;
             default:
-                System.out.println("[RIEGO] Telemetria desconocida: " + mensaje);
+                Mensajes.add("Telemetria desconocida: " + mensaje);
         }
     }
 
     // origen puede ser un fo, la propia ws o CENTRAL
     public static void solicitarRiego(String origen, String idWS, int segundos) {
-        System.out.println("[RIEGO] " + origen + " pide regar " + idWS + " durante " + segundos + "s");
+        Mensajes.add(origen + " pide regar " + idWS + " durante " + segundos + "s");
         notificar(origen, "INFO#" + origen + "#" + idWS + "#Validando estacion");
 
         //1.si es un operario mirar que existe en la bd
@@ -72,14 +72,14 @@ public class Riegos {
     private static void riegoIniciado(String idWS) {
         String origen = Estaciones.empezarRiego(idWS);
         if (origen == null) return; // nadie pidio este riego
-        System.out.println("[RIEGO] " + idWS + " empieza a regar (" + origen + ")");
+        Mensajes.add(idWS + " empieza a regar (" + origen + ")");
         notificar(origen, "AUTORIZADO#" + origen + "#" + idWS);
     }
 
     private static void riegoRechazado(String idWS, String motivo) {
         String origen = Estaciones.terminarRiego(idWS);
         if (origen == null) return;
-        System.out.println("[RIEGO] " + idWS + " ha rechazado el riego: " + motivo);
+        Mensajes.add(idWS + " ha rechazado el riego: " + motivo);
         denegar(origen, idWS, "RECHAZADO");
     }
 
@@ -93,12 +93,12 @@ public class Riegos {
     private static void finRiego(String idWS, String volumen, String duracion, String motivo) {
         String origen = Estaciones.terminarRiego(idWS);
         if (origen == null) return;
-        System.out.println("[RIEGO] " + idWS + " ha terminado: " + volumen + " L en " + duracion + "s (" + motivo + ")");
+        Mensajes.add(idWS + " ha terminado: " + volumen + " L en " + duracion + "s (" + motivo + ")");
         notificar(origen, "RESUMEN#" + origen + "#" + idWS + "#" + volumen + "#" + duracion + "#" + motivo);
     }
 
     private static void denegar(String origen, String idWS, String motivo) {
-        System.out.println("[RIEGO] Denegado " + idWS + " a " + origen + ": " + motivo);
+        Mensajes.add("Denegado " + idWS + " a " + origen + ": " + motivo);
         notificar(origen, "DENEGADO#" + origen + "#" + idWS + "#" + motivo);
     }
 
