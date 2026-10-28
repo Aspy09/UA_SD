@@ -74,6 +74,10 @@ public class App {
                 case "4":
                     System.out.println(Estacion.descripcion());
                     break;
+                case "5":
+                    // salir del menu sin parar la estacion (estacion.sh menu corta la conexion al ver este texto)
+                    System.out.println("Has salido del menu (la estacion sigue funcionando)");
+                    continue; // no volver a mostrar el menu
                 case "":
                     break; // Enter suelto muestra otra vez el menu
                 default:
@@ -85,7 +89,7 @@ public class App {
 
     static void mostrarMenu() {
         System.out.println();
-        System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado");
+        System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado  5) Salir del menu");
         System.out.print("Opcion: ");
     }
 
