@@ -21,7 +21,14 @@ public class BaseDatos {
             st.execute("CREATE TABLE IF NOT EXISTS estaciones ("
                     + "id TEXT PRIMARY KEY, "
                     + "ubicacion TEXT NOT NULL, "
-                    + "bloqueada INTEGER NOT NULL DEFAULT 0)"); // sqlite no tiene boolean: 0 no, 1 si
+                    + "bloqueada INTEGER NOT NULL DEFAULT 0, " // sqlite no tiene boolean: 0 no, 1 si
+                    + "region TEXT NOT NULL DEFAULT 'ALICANTE')");
+            // si la bd es de antes y no tiene la columna region, se la añado (si ya la tiene da error y no pasa nada)
+            try {
+                st.execute("ALTER TABLE estaciones ADD COLUMN region TEXT NOT NULL DEFAULT 'ALICANTE'");
+            } catch (SQLException e) {
+                // ya existia
+            }
             st.execute("CREATE TABLE IF NOT EXISTS operarios ("
                     + "id TEXT PRIMARY KEY, "
                     + "nombre TEXT NOT NULL)");
@@ -52,10 +59,11 @@ public class BaseDatos {
     public static synchronized List<Estacion> cargarEstaciones() throws SQLException {
         List<Estacion> lista = new ArrayList<>();
         try (Statement st = conexion.createStatement();
-             ResultSet rs = st.executeQuery("SELECT id, ubicacion, bloqueada FROM estaciones")) {
+             ResultSet rs = st.executeQuery("SELECT id, ubicacion, bloqueada, region FROM estaciones")) {
             while (rs.next()) {
                 Estacion ws = new Estacion(rs.getString("id"), rs.getString("ubicacion"));
                 ws.setBloqueada(rs.getInt("bloqueada") == 1);
+                ws.setRegion(rs.getString("region"));
                 lista.add(ws);
             }
         }
@@ -64,12 +72,13 @@ public class BaseDatos {
 
     // inserta la estacion y si ya existe actualiza sus datos
     public static synchronized void guardarEstacion(Estacion ws) throws SQLException {
-        String sql = "INSERT INTO estaciones (id, ubicacion, bloqueada) VALUES (?, ?, ?) "
-                + "ON CONFLICT(id) DO UPDATE SET ubicacion = excluded.ubicacion, bloqueada = excluded.bloqueada";
+        String sql = "INSERT INTO estaciones (id, ubicacion, bloqueada, region) VALUES (?, ?, ?, ?) "
+                + "ON CONFLICT(id) DO UPDATE SET ubicacion = excluded.ubicacion, bloqueada = excluded.bloqueada, region = excluded.region";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, ws.getId());
             ps.setString(2, ws.getUbicacion());
             ps.setInt(3, ws.isBloqueada() ? 1 : 0);
+            ps.setString(4, ws.getRegion());
             ps.executeUpdate();
         }
     }

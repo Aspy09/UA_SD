@@ -4,6 +4,7 @@ package wm;
 public class Estacion {
     private final String id;
     private String ubicacion;
+    private String region = "ALICANTE"; // provincia, decide a que topic de ordenes se le mandan
     private EstadoWS estado;
     private boolean bloqueada; // bloqueada por la central, se guarda aunque se desconecte
 
@@ -21,6 +22,7 @@ public class Estacion {
 
     public String getId() { return id; }
     public String getUbicacion() { return ubicacion; }
+    public String getRegion() { return region; }
     public EstadoWS getEstado() { return estado; }
     public boolean isBloqueada() { return bloqueada; }
     public String getOperario() { return operario; }
@@ -28,6 +30,7 @@ public class Estacion {
     public double getVolumen() { return volumen; }
 
     public void setUbicacion(String ubicacion) { this.ubicacion = ubicacion; }
+    public void setRegion(String region) { this.region = region; }
     public void setEstado(EstadoWS estado) { this.estado = estado; }
     public void setBloqueada(boolean bloqueada) { this.bloqueada = bloqueada; }
     public void setOperario(String operario) { this.operario = operario; }
