@@ -76,8 +76,10 @@ case "$1" in
             sleep 3
         fi
         echo "Menu de $2 (pulsa Enter para verlo; Ctrl+C para salir, la estacion sigue en marcha)"
-        # --detach-keys ctrl-c: Ctrl+C solo sale del menu, no apaga el engine
-        docker attach --detach-keys="ctrl-c" "eng-$(nombre "$2")"
+        # Ctrl+C solo sale del menu, no apaga el engine:
+        #   --sig-proxy=false: el Ctrl+C no se reenvia al engine (cierra solo este attach)
+        #   --detach-keys ctrl-c: por si el contenedor tiene terminal (tty), Ctrl+C se desengancha
+        docker attach --sig-proxy=false --detach-keys="ctrl-c" "eng-$(nombre "$2")"
         echo
         echo "Has salido del menu de $2 (sigue en marcha)"
         ;;
