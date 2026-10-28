@@ -8,7 +8,7 @@
 #   ./estacion.sh todas            -> todas las del fichero, en segundo plano
 #   ./estacion.sh todas 10         -> solo las 10 primeras
 #   ./estacion.sh menu WS-05       -> abrir el menu de una que esta en segundo plano
-#                                     (salir del menu con Ctrl+C, la estacion sigue en marcha)
+#                                     (opcion 5 del menu para salir, la estacion sigue funcionando)
 #   ./estacion.sh parar            -> apagar todas
 #
 # Por defecto usa la Central y el Kafka del docker compose local. Para usar otros (ej. Railway):
@@ -75,13 +75,23 @@ case "$1" in
             echo "El engine de $2 no estaba, lo arranco otra vez"
             sleep 3
         fi
-        echo "Menu de $2 (pulsa Enter para verlo; Ctrl+C para salir, la estacion sigue en marcha)"
-        # Ctrl+C solo sale del menu, no apaga el engine:
-        #   --sig-proxy=false: el Ctrl+C no se reenvia al engine (cierra solo este attach)
-        #   --detach-keys ctrl-c: por si el contenedor tiene terminal (tty), Ctrl+C se desengancha
-        docker attach --sig-proxy=false --detach-keys="ctrl-c" "eng-$(nombre "$2")"
+        echo "Menu de $2 (opcion 5 para salir, la estacion sigue funcionando)"
+
+        # conectarse al engine (--sig-proxy=false: nada de lo que pase aqui le llega como señal)
+        coproc ENGINE { exec docker attach --sig-proxy=false "eng-$(nombre "$2")" 2>&1; }
+        CONEXION=$ENGINE_PID
+        exec 3<&"${ENGINE[0]}" 4>&"${ENGINE[1]}"   # copiar la conexion a fd 3 (leer) y 4 (escribir)
+
+        # lo que escribe el engine sale por pantalla; cuando dice que se sale del menu, cortar la conexion
+        ( tee /dev/tty <&3 | { grep -q "Has salido del menu" && kill "$CONEXION" 2>/dev/null; } ) &
+
+        # lo que escribes tu le llega al engine (Enter al principio para que muestre el menu)
+        printf '\n' >&4
+        while kill -0 "$CONEXION" 2>/dev/null; do
+            if IFS= read -r -t 1 LINEA; then printf '%s\n' "$LINEA" >&4 2>/dev/null; fi
+        done
+        exec 3<&- 4>&-
         echo
-        echo "Has salido del menu de $2 (sigue en marcha)"
         ;;
 
     # ---------- apagar todas ----------
