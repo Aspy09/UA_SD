@@ -13,6 +13,7 @@ public class App {
     private static int puertoCentral;
     private static String idWS;
     private static String ubicacion;
+    private static String region; // provincia de la estacion, el engine solo recibe las ordenes de su provincia
     private static long ultimoIntento = 0; // para no reintentar mas de una vez cada 5s
 
     // enAveria = lo que le pasa al engine
@@ -38,7 +39,7 @@ public class App {
             s.setSoTimeout(5000); // max 5s esperando cada respuesta de central
             Protocolo p = new Protocolo(s);
 
-            if (!p.enviarENQ() || !p.enviarTrama("REGISTRO#" + idWS + "#" + ubicacion)) {
+            if (!p.enviarENQ() || !p.enviarTrama("REGISTRO#" + idWS + "#" + ubicacion + "#" + region)) {
                 System.out.println("CENTRAL no respondio al saludo");
                 s.close();
                 return false;
@@ -151,7 +152,7 @@ public class App {
                 System.out.println("Engine rechazado: la estacion aun no esta registrada en CENTRAL");
                 return;
             }
-            engine.enviarTrama("ID#" + idWS + "#" + ubicacion);
+            engine.enviarTrama("ID#" + idWS + "#" + ubicacion + "#" + region); // tambien la region
             System.out.println("Engine conectado");
 
             // Comprobacion de salud cada segundo
@@ -180,7 +181,7 @@ public class App {
         public static void main(String[] args) {
         // 1) Argumentos
         if (args.length < 4) {
-            System.out.println("Uso: java wm.App <puerto_engine> <ip_central:puerto> <id_ws> <ubicacion>");
+            System.out.println("Uso: java wm.App <puerto_engine> <ip_central:puerto> <id_ws> <ubicacion> [region]");
             System.exit(1);
         }
         String[] datosCentral = args[1].split(":");
@@ -192,6 +193,7 @@ public class App {
         puertoCentral = Integer.parseInt(datosCentral[1]);
         idWS = args[2];
         ubicacion = args[3];
+        region = args.length >= 5 ? args[4].toUpperCase() : "ALICANTE"; // provincia, si no se dice ALICANTE
         int puertoEngine = Integer.parseInt(args[0]);
 
         // 2) Primer registro. Si central no esta, se reintentara mas tarde

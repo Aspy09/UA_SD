@@ -36,12 +36,14 @@ public class App {
                 System.out.println("El Monitor rechazo la conexion: " + respuesta);
                 return;
             }
-            idWS = respuesta.split("#")[1];
+            String[] datos = respuesta.split("#");          // ID#id#ubicacion#provincia
+            idWS = datos[1];
+            String region = datos.length >= 4 ? datos[3] : "ALICANTE"; // provincia de la estacion
             Estacion.setId(idWS);
 
-            System.out.println("Conectado al Monitor. Soy la estacion " + idWS);
+            System.out.println("Conectado al Monitor. Soy la estacion " + idWS + " (" + region + ")");
 
-            KafkaEngine.escucharOrdenes(idWS); // empzar a leer ordenes
+            KafkaEngine.escucharOrdenes(idWS, region); // empezar a leer las ordenes de su provincia
             // Responder a cada comprobacion de salud
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {
@@ -74,6 +76,10 @@ public class App {
                 case "4":
                     System.out.println(Estacion.descripcion());
                     break;
+                case "5":
+                    // salir del menu sin parar la estacion (estacion.sh menu corta la conexion al ver este texto)
+                    System.out.println("Has salido del menu (la estacion sigue funcionando)");
+                    continue; // no volver a mostrar el menu
                 case "":
                     break; // Enter suelto muestra otra vez el menu
                 default:
@@ -85,7 +91,7 @@ public class App {
 
     static void mostrarMenu() {
         System.out.println();
-        System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado");
+        System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado  5) Salir del menu");
         System.out.print("Opcion: ");
     }
 

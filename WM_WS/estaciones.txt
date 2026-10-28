@@ -1,31 +1,31 @@
-WS-01#Parque Norte
-WS-02#Parque El Palmeral
-WS-03#Parque de la Ereta
-WS-04#Parque Canalejas
-WS-05#Plaza Gabriel Miro
-WS-06#Parque Lo Torrent
-WS-07#Parque Monte Tossal
-WS-08#Jardines de la Explanada
-WS-09#Parque de las Naciones
-WS-10#Parque Lo Morant
-WS-11#Parque Juan XXIII
-WS-12#Parque Benalua
-WS-13#Plaza de los Luceros
-WS-14#Parque Adolfo Suarez
-WS-15#Jardin de la Rambla
-WS-16#Parque San Blas
-WS-17#Parque Babel
-WS-18#Parque de la Marjal
-WS-19#Parque Polifilo
-WS-20#Parque Lo Boria
-WS-21#Plaza Castellon
-WS-22#Parque Princesa Mercedes
-WS-23#Jardines de Carolinas
-WS-24#Parque Doctor Rico
-WS-25#Parque Garbinet
-WS-26#Parque Playa San Juan
-WS-27#Parque Tossal Sur
-WS-28#Jardin del Postiguet
-WS-29#Parque Albufereta
-WS-30#Parque Vistahermosa
-WS-31#Plaza de America
+WS-01#Parque Norte#ALICANTE
+WS-02#Parque El Palmeral#ALICANTE
+WS-03#Parque de la Ereta#ALICANTE
+WS-04#Parque Canalejas#ALICANTE
+WS-05#Jardines de la Explanada#ALICANTE
+WS-06#Parque Lo Torrent#ALICANTE
+WS-07#Parque Monte Tossal#ALICANTE
+WS-08#Jardin del Turia#VALENCIA
+WS-09#Parque de Cabecera#VALENCIA
+WS-10#Jardines de Viveros#VALENCIA
+WS-11#Parque Central#VALENCIA
+WS-12#Jardin de Monforte#VALENCIA
+WS-13#Parque de Marxalenes#VALENCIA
+WS-14#Parque del Retiro#MADRID
+WS-15#Casa de Campo#MADRID
+WS-16#Parque del Oeste#MADRID
+WS-17#Madrid Rio#MADRID
+WS-18#Parque Juan Carlos I#MADRID
+WS-19#Jardines de Sabatini#MADRID
+WS-20#Parc de la Ciutadella#BARCELONA
+WS-21#Parc Guell#BARCELONA
+WS-22#Parc de Montjuic#BARCELONA
+WS-23#Jardins de Joan Maragall#BARCELONA
+WS-24#Parc del Laberint d Horta#BARCELONA
+WS-25#Parc de Diagonal Mar#BARCELONA
+WS-26#Parque de Maria Luisa#SEVILLA
+WS-27#Jardines de Murillo#SEVILLA
+WS-28#Parque del Alamillo#SEVILLA
+WS-29#Jardines del Real Alcazar#SEVILLA
+WS-30#Parque de los Principes#SEVILLA
+WS-31#Jardines de Cristina#SEVILLA

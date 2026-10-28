@@ -65,7 +65,7 @@ public class Riegos {
         }
 
         //3.decirle al engine que empiece, se autoriza cuando conteste INICIADO
-        KafkaCentral.enviar(KafkaCentral.ORDENES, idWS, "INICIAR#" + idWS + "#" + origen + "#" + segundos);
+        KafkaCentral.enviar(KafkaCentral.ordenes(Estaciones.region(idWS)), idWS, "INICIAR#" + idWS + "#" + origen + "#" + segundos);
         notificar(origen, "INFO#" + origen + "#" + idWS + "#Esperando confirmacion de la estacion");
     }
 

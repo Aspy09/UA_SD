@@ -53,7 +53,10 @@ public class HiloCliente extends Thread {
         if (codigo.equals("REGISTRO")) {
             if (campos.length < 3) return "KO#FORMATO_INCORRECTO";
             if (idWS != null) return "KO#" + idWS + "#YA_REGISTRADA";
-            String respuesta = Estaciones.registrar(campos[1], campos[2]);
+            // provincia: 4o campo (si no viene, ALICANTE). Solo las que tenemos
+            String region = campos.length >= 4 ? campos[3].toUpperCase() : "ALICANTE";
+            if (!KafkaCentral.esRegion(region)) return "KO#" + campos[1] + "#REGION_DESCONOCIDA";
+            String respuesta = Estaciones.registrar(campos[1], campos[2], region);
             if (respuesta.startsWith("OK#")) idWS = campos[1];
             return respuesta;
         }

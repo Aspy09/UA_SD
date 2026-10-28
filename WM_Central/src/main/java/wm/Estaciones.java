@@ -38,7 +38,7 @@ public class Estaciones {
 
     // registro de una ws, devuelve la respuesta para el monitor
     // synchronized para que no se registren dos monitores con el mismo id a la vez
-    public static synchronized String registrar(String id, String ubicacion) {
+    public static synchronized String registrar(String id, String ubicacion, String region) {
         Estacion ws = estaciones.get(id);
         if (ws == null) {
             ws = new Estacion(id, ubicacion);
@@ -48,6 +48,7 @@ public class Estaciones {
             return "KO#" + id + "#YA_CONECTADA";
         }
         ws.setUbicacion(ubicacion);
+        ws.setRegion(region);
         guardar(ws);
         cambiarEstado(ws, ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
         return "OK#" + id;
@@ -57,7 +58,7 @@ public class Estaciones {
         Estacion ws = estaciones.get(id);
         // si estaba regando hay que parar el riego
         if (ws.getEstado() == EstadoWS.REGANDO) {
-            KafkaCentral.enviar(KafkaCentral.ORDENES, id, "PARAR#" + id);
+            KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
         }
         cambiarEstado(ws, EstadoWS.FUGA);
     }
@@ -90,7 +91,7 @@ public class Estaciones {
         ws.setBloqueada(true);
         guardar(ws);
         // el engine para el riego si estaba regando
-        KafkaCentral.enviar(KafkaCentral.ORDENES, id, "BLOQUEAR#" + id);
+        KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "BLOQUEAR#" + id);
         // si tiene fuga o esta desconectada se queda asi, al volver ya saldra fuera de servicio
         if (ws.getEstado() == EstadoWS.DISPONIBLE || ws.getEstado() == EstadoWS.REGANDO) {
             cambiarEstado(ws, EstadoWS.FUERA_DE_SERVICIO);
@@ -103,7 +104,7 @@ public class Estaciones {
         if (ws == null) return false;
         ws.setBloqueada(false);
         guardar(ws);
-        KafkaCentral.enviar(KafkaCentral.ORDENES, id, "ACTIVAR#" + id);
+        KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "ACTIVAR#" + id);
         if (ws.getEstado() == EstadoWS.FUERA_DE_SERVICIO) {
             cambiarEstado(ws, EstadoWS.DISPONIBLE);
         }
@@ -144,7 +145,7 @@ public class Estaciones {
 
         // si mientras tanto se ha averiado o bloqueado que pare
         if (ws.getEstado() != EstadoWS.DISPONIBLE) {
-            KafkaCentral.enviar(KafkaCentral.ORDENES, id, "PARAR#" + id);
+            KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
             return ws.getOperario();
         }
         ws.setCaudal(0);
@@ -175,6 +176,12 @@ public class Estaciones {
             cambiarEstado(ws, ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
         }
         return operario;
+    }
+
+    // provincia de una estacion (para saber a que topic mandarle las ordenes)
+    public static synchronized String region(String id) {
+        Estacion ws = estaciones.get(id);
+        return ws == null ? null : ws.getRegion();
     }
 
     public static Collection<Estacion> todas() {

@@ -53,6 +53,7 @@ public class PanelWeb {
                 if (i > 0) json.append(",");
                 json.append("{\"id\":").append(texto(ws.getId()))
                     .append(",\"ubicacion\":").append(texto(ws.getUbicacion()))
+                    .append(",\"region\":").append(texto(ws.getRegion()))
                     .append(",\"estado\":").append(texto(ws.getEstado().toString()))
                     .append(",\"caudal\":").append(ws.getCaudal())
                     .append(",\"volumen\":").append(ws.getVolumen())
