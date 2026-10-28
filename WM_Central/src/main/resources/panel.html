@@ -105,6 +105,7 @@
   #bRiego { background: var(--verde); }
   #bBloquear { background: var(--naranja); }
   #bActivar { background: var(--azul); }
+  #bBaja { background: var(--gris); }
 
   .leyenda { display: grid; gap: 6px; font-size: 13px; }
   .leyenda div { display: flex; align-items: center; gap: 8px; }
@@ -163,6 +164,7 @@
           <button id="bRiego" onclick="orden('riego')">▶ Iniciar riego</button>
           <button id="bBloquear" onclick="orden('bloquear')">⛔ Bloquear</button>
           <button id="bActivar" onclick="orden('activar')">✔ Activar</button>
+          <button id="bBaja" onclick="orden('baja')">🗑 Dar de baja</button>
         </div>
       </div>
 
@@ -319,12 +321,16 @@
     const ws = document.getElementById('ws').value;
     const segundos = document.getElementById('segundos').value;
     if (ws === 'TODAS' && accion === 'bloquear' && !confirm('¿Bloquear TODAS las estaciones?')) return;
+    // dar de baja borra la estacion de la central: preguntar antes (solo se puede si esta desconectada)
+    if (accion === 'baja' && !confirm(ws === 'TODAS'
+          ? '¿Dar de baja TODAS las estaciones desconectadas?'
+          : '¿Dar de baja ' + ws + '? Solo se puede si está desconectada.')) return;
 
     try {
       const url = '/api/orden?accion=' + accion + '&ws=' + encodeURIComponent(ws) + '&segundos=' + encodeURIComponent(segundos);
       const r = await fetch(url, { method: 'POST' });
       const texto = await r.text();
-      const nombres = { riego: 'Riego solicitado', bloquear: 'Bloqueo enviado', activar: 'Activación enviada' };
+      const nombres = { riego: 'Riego solicitado', bloquear: 'Bloqueo enviado', activar: 'Activación enviada', baja: 'Estación dada de baja' };
       aviso(r.ok ? nombres[accion] + ' · ' + (ws === 'TODAS' ? 'todas las estaciones' : ws) : texto, !r.ok);
     } catch (e) {
       aviso('No se ha podido contactar con la central', true);

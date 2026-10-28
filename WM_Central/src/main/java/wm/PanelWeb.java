@@ -111,6 +111,14 @@ public class PanelWeb {
                         Mensajes.add("CENTRAL activa " + id);
                         Estaciones.activar(id);
                         break;
+                    case "baja":
+                        // solo se pueden dar de baja las desconectadas; con TODAS se saltan las demas
+                        String motivo = Estaciones.darDeBaja(id);
+                        if (motivo != null && ids.size() == 1) {
+                            responder(ex, 400, "text/plain", "No se puede dar de baja " + id + ": " + motivo);
+                            return;
+                        }
+                        break;
                     default:
                         responder(ex, 400, "text/plain", "Accion desconocida: " + accion);
                         return;
