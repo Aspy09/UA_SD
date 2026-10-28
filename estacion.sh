@@ -25,6 +25,9 @@ nombre() { echo "$1" | tr 'A-Z' 'a-z'; }
 # ubicacion de una estacion segun el fichero
 ubicacion() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f2; }
 
+# si la estacion ya esta en marcha (su monitor existe)
+en_marcha() { [ -n "$(docker ps -q --filter "name=^mon-$(nombre "$1")$")" ]; }
+
 # arranca el monitor de una estacion en segundo plano
 lanzar_monitor() {
     docker compose run -d --rm --no-deps --name "mon-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx32m \
@@ -37,6 +40,8 @@ case "$1" in
     todas)
         head -n "${2:-1000}" "$FICHERO" | while IFS='#' read -r ID UBI; do
             [ -z "$ID" ] && continue
+            if en_marcha "$ID"; then echo "$ID ya estaba en marcha"; continue; fi
+            docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
             lanzar_monitor "$ID" "$UBI"
             docker compose run -d --rm --no-deps --name "eng-$(nombre "$ID")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
                 engine "$KAFKA" "mon-$(nombre "$ID"):8001" < /dev/null > /dev/null
@@ -68,7 +73,13 @@ case "$1" in
         UBI="${2:-$(ubicacion "$ID")}"   # la ubicacion del fichero (o la que se escriba despues del id)
         [ -z "$UBI" ] && { echo "$ID no esta en $FICHERO (escribe tambien su ubicacion: ./estacion.sh $ID \"Parque...\")"; exit 1; }
 
-        lanzar_monitor "$ID" "$UBI"
+        # si ya esta en marcha (por ejemplo con "todas") no se lanza otra vez, se abre su menu
+        if en_marcha "$ID"; then
+            echo "$ID ya esta en marcha. Para usar su menu: ./estacion.sh menu $ID"
+            exit 1
+        fi
+        docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
+        lanzar_monitor "$ID" "$UBI" || { echo "No se ha podido arrancar el monitor de $ID"; exit 1; }
         echo "$ID ($UBI) en marcha"
         # al salir (Ctrl+C o fin del engine) apagar tambien su monitor
         trap 'docker rm -f "mon-$(nombre "$ID")" > /dev/null 2>&1' EXIT
