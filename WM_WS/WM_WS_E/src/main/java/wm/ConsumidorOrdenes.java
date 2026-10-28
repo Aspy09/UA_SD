@@ -17,17 +17,19 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 public class ConsumidorOrdenes extends Thread {
     private final String broker;
     private final String idWS;
+    private final String region; // provincia: solo se leen las ordenes de su topic
 
-    public ConsumidorOrdenes(String broker, String idWS) {
+    public ConsumidorOrdenes(String broker, String idWS, String region) {
         this.broker = broker;
         this.idWS = idWS;
+        this.region = region;
     }
 
     public void run() {
         //1.configurar el consumidor
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, idWS); // cada engine su grupo: todos reciben todas las ordenes
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, idWS); // cada engine su grupo: recibe todas las ordenes de su provincia
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         // si el engine muere sin despedirse, kafka lo expulsa a los 10 s (por defecto 45)
@@ -35,7 +37,7 @@ public class ConsumidorOrdenes extends Thread {
 
         try (KafkaConsumer<String, String> consumidor = new KafkaConsumer<>(props)) {
             //2.suscribirse a las ordenes; al arrancar saltar al final para ignorar las antiguas
-            consumidor.subscribe(List.of(KafkaEngine.ORDENES), new ConsumerRebalanceListener() {
+            consumidor.subscribe(List.of(KafkaEngine.ordenes(region)), new ConsumerRebalanceListener() {
                 public void onPartitionsAssigned(Collection<TopicPartition> particiones) {
                     consumidor.seekToEnd(particiones);
                     for (TopicPartition p : particiones) {

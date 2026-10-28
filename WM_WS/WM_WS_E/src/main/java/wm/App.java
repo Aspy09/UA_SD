@@ -36,12 +36,14 @@ public class App {
                 System.out.println("El Monitor rechazo la conexion: " + respuesta);
                 return;
             }
-            idWS = respuesta.split("#")[1];
+            String[] datos = respuesta.split("#");          // ID#id#ubicacion#provincia
+            idWS = datos[1];
+            String region = datos.length >= 4 ? datos[3] : "ALICANTE"; // provincia de la estacion
             Estacion.setId(idWS);
 
-            System.out.println("Conectado al Monitor. Soy la estacion " + idWS);
+            System.out.println("Conectado al Monitor. Soy la estacion " + idWS + " (" + region + ")");
 
-            KafkaEngine.escucharOrdenes(idWS); // empzar a leer ordenes
+            KafkaEngine.escucharOrdenes(idWS, region); // empezar a leer las ordenes de su provincia
             // Responder a cada comprobacion de salud
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {

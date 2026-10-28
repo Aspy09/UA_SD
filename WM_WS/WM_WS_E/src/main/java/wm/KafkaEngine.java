@@ -11,7 +11,10 @@ import org.apache.kafka.common.serialization.StringSerializer;
 public class KafkaEngine {
     // nombres de los topics
     public static final String SOLICITUDES = "wm.solicitudes";
-    public static final String ORDENES = "wm.ordenes";
+    // las ordenes van en un topic por provincia (wm.ordenes.ALICANTE...), asi cada engine solo lee las de su provincia
+    public static String ordenes(String region) {
+        return "wm.ordenes." + region;
+    }
     public static final String TELEMETRIA = "wm.telemetria";
     private static boolean escuchando = false;
     private static String broker;
@@ -36,9 +39,9 @@ public class KafkaEngine {
         System.out.println("[KAFKA] -> " + topic + ": " + mensaje);
     }
         // arranca el hilo que lee las ordenes (solo una vez, aunque reconectemos con el monitor)
-    public static synchronized void escucharOrdenes(String idWS) {
+    public static synchronized void escucharOrdenes(String idWS, String region) {
         if (escuchando) return;
         escuchando = true;
-        new ConsumidorOrdenes(broker, idWS).start();
+        new ConsumidorOrdenes(broker, idWS, region).start();
     }
 }
