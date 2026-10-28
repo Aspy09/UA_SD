@@ -16,10 +16,13 @@ import org.apache.kafka.common.serialization.StringSerializer;
 public class KafkaCentral {
     // nombres de los topics (los del readme)
     public static final String SOLICITUDES = "wm.solicitudes";
-    public static final String ORDENES = "wm.ordenes";
     public static final String TELEMETRIA = "wm.telemetria";
     public static final String NOTIFICACIONES = "wm.notificaciones";
     public static final String ESTACIONES = "wm.estaciones";
+
+    // provincias: cada una tiene su propio topic de ordenes (wm.ordenes.ALICANTE...)
+    // asi cada engine solo recibe las ordenes de su provincia y no las de todas
+    public static final String[] REGIONES = { "ALICANTE", "VALENCIA", "MADRID", "BARCELONA", "SEVILLA" };
 
     private static String broker;
     private static KafkaProducer<String, String> productor;
@@ -51,7 +54,9 @@ public class KafkaCentral {
 
             //2.apuntar los que no estan
             List<NewTopic> nuevos = new ArrayList<>();
-            for (String topic : new String[] { SOLICITUDES, ORDENES, TELEMETRIA, NOTIFICACIONES, ESTACIONES }) {
+            List<String> topics = new ArrayList<>(List.of(SOLICITUDES, TELEMETRIA, NOTIFICACIONES, ESTACIONES));
+            for (String r : REGIONES) topics.add(ordenes(r)); // y uno de ordenes por provincia
+            for (String topic : topics) {
                 if (!existentes.contains(topic)) {
                     nuevos.add(new NewTopic(topic, 1, (short) 1)); // 1 particion y 1 replica
                 }
@@ -69,6 +74,16 @@ public class KafkaCentral {
     public static void enviar(String topic, String key, String mensaje) {
         productor.send(new ProducerRecord<>(topic, key, mensaje));
         System.out.println("[KAFKA] -> " + topic + ": " + mensaje);
+    }
+
+    // topic de ordenes de una provincia
+    public static String ordenes(String region) {
+        return "wm.ordenes." + region;
+    }
+
+    // si es una de nuestras provincias
+    public static boolean esRegion(String region) {
+        return List.of(REGIONES).contains(region);
     }
 
     public static String getBroker() {
