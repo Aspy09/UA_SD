@@ -265,7 +265,7 @@
       }
       return '<div class="ws ' + ws.estado + (ws.id === elegida ? ' elegida' : '') + '" onclick="elegir(\'' + esc(ws.id) + '\')">' +
                '<div class="franja"><span>' + e.nombre + '</span><span>' + (ws.estado === 'REGANDO' ? '💧' : '') + '</span></div>' +
-               '<div class="cuerpo"><div class="id">' + esc(ws.id) + '</div><div class="ubicacion">📍 ' + esc(ws.ubicacion) + '</div>' + cuerpo + '</div>' +
+               '<div class="cuerpo"><div class="id">' + esc(ws.id) + '</div><div class="ubicacion">📍 ' + esc(ws.ubicacion) + ' · ' + esc(ws.region) + '</div>' + cuerpo + '</div>' +
              '</div>';
     }).join('');
   }
