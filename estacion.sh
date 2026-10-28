@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Lanza estaciones de riego (Monitor + Engine de cada una) con docker.
-# La ubicacion de cada estacion se coge de WM_WS/estaciones.txt (una por linea: ID#ubicacion),
-# asi solo hace falta escribir el ID.
+# La ubicacion y la region de cada estacion se cogen de WM_WS/estaciones.txt
+# (una por linea: ID#ubicacion#region), asi solo hace falta escribir el ID.
 #
 # Uso:
 #   ./estacion.sh WS-05            -> una estacion, con el menu del engine en esta terminal
@@ -22,17 +22,18 @@ FICHERO="WM_WS/estaciones.txt"
 # nombre de los contenedores: WS-05 -> mon-ws-05 y eng-ws-05 (igual para todas)
 nombre() { echo "$1" | tr 'A-Z' 'a-z'; }
 
-# ubicacion de una estacion segun el fichero
+# ubicacion y region de una estacion segun el fichero
 ubicacion() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f2; }
+region() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f3; }
 
 # si la estacion ya esta en marcha (su monitor existe) y si su engine esta en marcha
 en_marcha() { [ -n "$(docker ps -q --filter "name=^mon-$(nombre "$1")$")" ]; }
 engine_en_marcha() { [ -n "$(docker ps -q --filter "name=^eng-$(nombre "$1")$")" ]; }
 
-# arranca el monitor de una estacion en segundo plano
+# arranca el monitor de una estacion en segundo plano (id, ubicacion, region)
 lanzar_monitor() {
     docker compose run -d --rm --no-deps --name "mon-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx32m \
-        monitor 8001 "$CENTRAL" "$1" "$2" < /dev/null > /dev/null
+        monitor 8001 "$CENTRAL" "$1" "$2" "$3" < /dev/null > /dev/null
 }
 
 # arranca el engine de una estacion en segundo plano, conectado a su monitor
@@ -45,7 +46,7 @@ case "$1" in
 
     # ---------- todas las del fichero en segundo plano ----------
     todas)
-        head -n "${2:-1000}" "$FICHERO" | while IFS='#' read -r ID UBI; do
+        head -n "${2:-1000}" "$FICHERO" | while IFS='#' read -r ID UBI REG; do
             [ -z "$ID" ] && continue
             if en_marcha "$ID"; then
                 # el monitor sigue: si se ha caido su engine se vuelve a arrancar
@@ -58,9 +59,9 @@ case "$1" in
                 continue
             fi
             docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
-            lanzar_monitor "$ID" "$UBI"
+            lanzar_monitor "$ID" "$UBI" "$REG"
             lanzar_engine "$ID"
-            echo "$ID ($UBI) en marcha"
+            echo "$ID ($UBI, region $REG) en marcha"
         done
         echo "Listo. Menu de una: ./estacion.sh menu WS-05   Apagarlas: ./estacion.sh parar"
         ;;
@@ -108,6 +109,7 @@ case "$1" in
     *)
         ID="$1"
         UBI="${2:-$(ubicacion "$ID")}"   # la ubicacion del fichero (o la que se escriba despues del id)
+        REG="${3:-$(region "$ID")}"      # la region del fichero (o la que se escriba despues)
         [ -z "$UBI" ] && { echo "$ID no esta en $FICHERO (escribe tambien su ubicacion: ./estacion.sh $ID \"Parque...\")"; exit 1; }
 
         # si ya esta en marcha (por ejemplo con "todas") no se lanza otra vez, se abre su menu
@@ -116,8 +118,8 @@ case "$1" in
             exit 1
         fi
         docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
-        lanzar_monitor "$ID" "$UBI" || { echo "No se ha podido arrancar el monitor de $ID"; exit 1; }
-        echo "$ID ($UBI) en marcha"
+        lanzar_monitor "$ID" "$UBI" "$REG" || { echo "No se ha podido arrancar el monitor de $ID"; exit 1; }
+        echo "$ID ($UBI, region $REG) en marcha"
         # al salir (Ctrl+C o fin del engine) apagar tambien su monitor
         trap 'docker rm -f "mon-$(nombre "$ID")" > /dev/null 2>&1' EXIT
         # engine en primer plano, con su menu
