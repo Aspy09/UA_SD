@@ -74,6 +74,14 @@ public class BaseDatos {
         }
     }
 
+    // dar de baja una estacion: borrarla de la bd
+    public static synchronized void borrarEstacion(String id) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement("DELETE FROM estaciones WHERE id = ?")) {
+            ps.setString(1, id);
+            ps.executeUpdate();
+        }
+    }
+
     // para comprobar las peticiones de riego de los operarios
     public static synchronized boolean existeOperario(String id) throws SQLException {
         try (PreparedStatement ps = conexion.prepareStatement("SELECT 1 FROM operarios WHERE id = ?")) {
