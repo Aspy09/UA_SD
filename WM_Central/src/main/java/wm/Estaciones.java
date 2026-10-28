@@ -110,6 +110,21 @@ public class Estaciones {
         return true;
     }
 
+    // dar de baja una estacion (solo si esta desconectada), devuelve null si se puede o el motivo si no
+    public static synchronized String darDeBaja(String id) {
+        Estacion ws = estaciones.get(id);
+        if (ws == null) return "NO_EXISTE";
+        if (ws.getEstado() != EstadoWS.DESCONECTADA) return "ESTA_CONECTADA"; // su monitor sigue hablando con la central
+        try {
+            BaseDatos.borrarEstacion(id);
+        } catch (SQLException e) {
+            return "ERROR_BD";
+        }
+        estaciones.remove(id);
+        Mensajes.add("CENTRAL da de baja " + id + " (" + ws.getUbicacion() + ")");
+        return null;
+    }
+
     // riegos
 
     // reservar la ws para un riego, devuelve null si se puede o el motivo si no
