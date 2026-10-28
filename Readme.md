@@ -67,12 +67,14 @@ Cualquiera de los dos extremos puede iniciar una petición (ej. el Monitor manda
 
 El Monitor es el **cliente**; CENTRAL es el **servidor** (puerto pasado por argumento).
 
-Argumentos del Monitor: `<puerto_para_engine> <ip_central:puerto> <id_ws> <ubicacion>`
+Argumentos del Monitor: `<puerto_para_engine> <ip_central:puerto> <id_ws> <ubicacion> [provincia]`
+(la provincia es una de `ALICANTE`, `VALENCIA`, `MADRID`, `BARCELONA`, `SEVILLA`; si no se pone, `ALICANTE`).
 (la ubicación se añade como 4º argumento porque el enunciado pide enviarla al registrarse).
 
 | Petición (Monitor → CENTRAL) | Respuesta (CENTRAL → Monitor) | Qué hace CENTRAL |
 |---|---|---|
-| `REGISTRO#<id_ws>#<ubicacion>` | `OK#<id_ws>` | Si el ID no existe en BD, lo da de alta. Lo marca `DISPONIBLE` (o `FUERA_DE_SERVICIO` si estaba bloqueada). |
+| `REGISTRO#<id_ws>#<ubicacion>#<provincia>` | `OK#<id_ws>` | Si el ID no existe en BD, lo da de alta (con su provincia). Lo marca `DISPONIBLE` (o `FUERA_DE_SERVICIO` si estaba bloqueada). |
+| | `KO#<id_ws>#REGION_DESCONOCIDA` | Si la provincia no es una de las 5. |
 | | `KO#<id_ws>#<motivo>` | Ej. `KO#WS-01#YA_CONECTADA` si ya hay otro Monitor con ese ID. El Monitor termina. |
 | `AVERIA#<id_ws>` | `OK#<id_ws>` | Marca `FUGA`. Si estaba regando, ordena `PARAR`. |
 | `RESUELTO#<id_ws>` | `OK#<id_ws>` | Marca `DISPONIBLE`. |
@@ -87,7 +89,7 @@ El Engine es el **cliente**; el Monitor es el **servidor**.
 
 | Petición | Respuesta | Notas |
 |---|---|---|
-| Engine → Monitor: `CONECTAR` | `ID#<id_ws>#<ubicacion>` | Así el Engine sabe qué WS es (el ID lo valida CENTRAL al registrar el Monitor). |
+| Engine → Monitor: `CONECTAR` | `ID#<id_ws>#<ubicacion>#<provincia>` | Así el Engine sabe qué WS es (el ID lo valida CENTRAL al registrar el Monitor) y de qué provincia, para leer solo sus órdenes. |
 | | `KO#NO_REGISTRADA` | Si CENTRAL aún no ha aceptado el registro. El Engine reintenta. |
 | Monitor → Engine (cada 1 s): `SALUD#<id_ws>` | `OK#<id_ws>` o `KO#<id_ws>` | El Engine responde `KO` mientras el usuario tenga simulada la avería (tecla). |
 
@@ -105,19 +107,21 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 | Topic | Quién escribe → quién lee |
 |---|---|
 | `wm.solicitudes` | FO y Engine → CENTRAL |
-| `wm.ordenes` | CENTRAL → Engines |
+| `wm.ordenes.<PROVINCIA>` | CENTRAL → Engines de esa provincia (uno por provincia: `wm.ordenes.ALICANTE`, `wm.ordenes.MADRID`...) |
 | `wm.telemetria` | Engines → CENTRAL |
 | `wm.notificaciones` | CENTRAL → FO |
 | `wm.estaciones` | CENTRAL → FO (estado de todas las WS) |
 
 **group.id:** CENTRAL usa `central`. Cada Engine usa su ID (`WS-01`) y cada FO el suyo (`FO-01`), para que **todos** reciban todos los mensajes del topic y cada uno filtre los que le tocan.
 
+**Escalabilidad (un topic de órdenes por provincia):** si todos los Engines leyeran un único `wm.ordenes`, con millones de estaciones cada Engine recibiría las órdenes de todas. Por eso hay un topic por provincia y cada Engine solo se suscribe al de la suya: recibe únicamente las órdenes de las estaciones de su provincia.
+
 ### `wm.solicitudes` (FO / Engine → CENTRAL)
 | Mensaje | Significado |
 |---|---|
 | `RIEGO#<origen>#<id_ws>#<segundos>` | Pide regar `<id_ws>` durante `<segundos>`. `<origen>` = ID del FO, o el ID de la WS si se pide desde el menú de la estación. |
 
-### `wm.ordenes` (CENTRAL → Engine)
+### `wm.ordenes.<PROVINCIA>` (CENTRAL → Engine)
 | Mensaje | Significado |
 |---|---|
 | `INICIAR#<id_ws>#<origen>#<segundos>` | Abrir electroválvula. `<origen>` = FO, WS o `CENTRAL`. |
@@ -157,7 +161,7 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 FO-01   → wm.solicitudes     RIEGO#FO-01#WS-04#60
 CENTRAL → wm.notificaciones  INFO#FO-01#WS-04#Validando estacion
           (CENTRAL comprueba en su estado que WS-04 está DISPONIBLE)
-CENTRAL → wm.ordenes         INICIAR#WS-04#FO-01#60
+CENTRAL → wm.ordenes.ALICANTE INICIAR#WS-04#FO-01#60
 WS-04   → wm.telemetria      INICIADO#WS-04
 CENTRAL → wm.notificaciones  AUTORIZADO#FO-01#WS-04
 WS-04   → wm.telemetria      RIEGO#WS-04#11.4#0.2      (cada segundo)
