@@ -8,7 +8,7 @@
 #   ./estacion.sh todas            -> todas las del fichero, en segundo plano
 #   ./estacion.sh todas 10         -> solo las 10 primeras
 #   ./estacion.sh menu WS-05       -> abrir el menu de una que esta en segundo plano
-#                                     (salir del menu sin pararla: Ctrl+P y luego Ctrl+Q)
+#                                     (salir del menu con Ctrl+C, la estacion sigue en marcha)
 #   ./estacion.sh parar            -> apagar todas
 #
 # Por defecto usa la Central y el Kafka del docker compose local. Para usar otros (ej. Railway):
@@ -25,13 +25,20 @@ nombre() { echo "$1" | tr 'A-Z' 'a-z'; }
 # ubicacion de una estacion segun el fichero
 ubicacion() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f2; }
 
-# si la estacion ya esta en marcha (su monitor existe)
+# si la estacion ya esta en marcha (su monitor existe) y si su engine esta en marcha
 en_marcha() { [ -n "$(docker ps -q --filter "name=^mon-$(nombre "$1")$")" ]; }
+engine_en_marcha() { [ -n "$(docker ps -q --filter "name=^eng-$(nombre "$1")$")" ]; }
 
 # arranca el monitor de una estacion en segundo plano
 lanzar_monitor() {
     docker compose run -d --rm --no-deps --name "mon-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx32m \
         monitor 8001 "$CENTRAL" "$1" "$2" < /dev/null > /dev/null
+}
+
+# arranca el engine de una estacion en segundo plano, conectado a su monitor
+lanzar_engine() {
+    docker compose run -d --rm --no-deps --name "eng-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
+        engine "$KAFKA" "mon-$(nombre "$1"):8001" < /dev/null > /dev/null
 }
 
 case "$1" in
@@ -40,11 +47,19 @@ case "$1" in
     todas)
         head -n "${2:-1000}" "$FICHERO" | while IFS='#' read -r ID UBI; do
             [ -z "$ID" ] && continue
-            if en_marcha "$ID"; then echo "$ID ya estaba en marcha"; continue; fi
+            if en_marcha "$ID"; then
+                # el monitor sigue: si se ha caido su engine se vuelve a arrancar
+                if engine_en_marcha "$ID"; then
+                    echo "$ID ya estaba en marcha"
+                else
+                    lanzar_engine "$ID"
+                    echo "$ID: engine arrancado otra vez"
+                fi
+                continue
+            fi
             docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
             lanzar_monitor "$ID" "$UBI"
-            docker compose run -d --rm --no-deps --name "eng-$(nombre "$ID")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
-                engine "$KAFKA" "mon-$(nombre "$ID"):8001" < /dev/null > /dev/null
+            lanzar_engine "$ID"
             echo "$ID ($UBI) en marcha"
         done
         echo "Listo. Menu de una: ./estacion.sh menu WS-05   Apagarlas: ./estacion.sh parar"
@@ -53,8 +68,18 @@ case "$1" in
     # ---------- engancharse al menu de una que ya esta en marcha ----------
     menu)
         [ -z "$2" ] && { echo "Uso: ./estacion.sh menu WS-05"; exit 1; }
-        echo "Menu de $2 (pulsa Enter para verlo; salir sin pararla: Ctrl+P y luego Ctrl+Q)"
-        docker attach "eng-$(nombre "$2")"
+        en_marcha "$2" || { echo "$2 no esta en marcha. Lanzala con: ./estacion.sh todas  (o ./estacion.sh $2)"; exit 1; }
+        # si su engine se ha caido, volver a arrancarlo antes de abrir el menu
+        if ! engine_en_marcha "$2"; then
+            lanzar_engine "$2"
+            echo "El engine de $2 no estaba, lo arranco otra vez"
+            sleep 3
+        fi
+        echo "Menu de $2 (pulsa Enter para verlo; Ctrl+C para salir, la estacion sigue en marcha)"
+        # --detach-keys ctrl-c: Ctrl+C solo sale del menu, no apaga el engine
+        docker attach --detach-keys="ctrl-c" "eng-$(nombre "$2")"
+        echo
+        echo "Has salido del menu de $2 (sigue en marcha)"
         ;;
 
     # ---------- apagar todas ----------
