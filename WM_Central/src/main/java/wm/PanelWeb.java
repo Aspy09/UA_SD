@@ -62,18 +62,70 @@ public class PanelWeb {
             }
         }
 
-        json.append("],\"mensajes\":[");
-        List<String> mensajes = Mensajes.ultimos();
-        for (int i = 0; i < mensajes.size(); i++) {
+        // mensajes separados: actividad normal y alertas
+        json.append("],\"mensajes\":");
+        lista(json, Mensajes.ultimos());
+        json.append(",\"alertas\":");
+        lista(json, Mensajes.ultimasAlertas());
+
+        // provincias con el topic de sus ordenes, para las pestañas del panel
+        json.append(",\"regiones\":[");
+        for (int i = 0; i < KafkaCentral.REGIONES.length; i++) {
             if (i > 0) json.append(",");
-            json.append(texto(mensajes.get(i)));
+            json.append("{\"nombre\":").append(texto(KafkaCentral.REGIONES[i]))
+                .append(",\"topic\":").append(texto(KafkaCentral.ordenes(KafkaCentral.REGIONES[i]))).append("}");
+        }
+
+        // operaciones de riego con todos sus pasos (trazabilidad)
+        json.append("],\"operaciones\":[");
+        synchronized (Operaciones.class) {
+            List<Operaciones.Operacion> ops = Operaciones.todas();
+            for (int i = 0; i < ops.size(); i++) {
+                Operaciones.Operacion op = ops.get(i);
+                if (i > 0) json.append(",");
+                json.append("{\"id\":").append(texto(op.id))
+                    .append(",\"ws\":").append(texto(op.ws))
+                    .append(",\"origen\":").append(texto(op.origen))
+                    .append(",\"segundos\":").append(op.segundos)
+                    .append(",\"estado\":").append(texto(op.estado))
+                    .append(",\"telemetrias\":").append(op.telemetrias)
+                    .append(",\"volumen\":").append(op.volumen)
+                    .append(",\"pasos\":");
+                lista(json, op.pasos);
+                json.append("}");
+            }
+        }
+
+        // operarios dados de alta
+        json.append("],\"operarios\":[");
+        try {
+            List<String[]> operarios = BaseDatos.listarOperarios();
+            for (int i = 0; i < operarios.size(); i++) {
+                if (i > 0) json.append(",");
+                String[] o = operarios.get(i);
+                json.append("{\"id\":").append(texto(o[0]))
+                    .append(",\"nombre\":").append(texto(o[1]))
+                    .append(",\"region\":").append(texto(o[2])).append("}");
+            }
+        } catch (Exception e) {
+            // si la bd falla el panel sigue sin la lista de operarios
         }
         json.append("]}");
 
         responder(ex, 200, "application/json; charset=utf-8", json.toString());
     }
 
-    // /api/orden?accion=riego|bloquear|activar&ws=WS-01|TODAS&segundos=60
+    // lista de textos en json: ["a","b"]
+    private static void lista(StringBuilder json, List<String> textos) {
+        json.append("[");
+        for (int i = 0; i < textos.size(); i++) {
+            if (i > 0) json.append(",");
+            json.append(texto(textos.get(i)));
+        }
+        json.append("]");
+    }
+
+    // /api/orden?accion=riego|bloquear|activar&ws=WS-01|TODAS&segundos=60&region=MADRID
     private static void orden(HttpExchange ex) throws IOException {
         // solo POST, asi abrir el enlace en el navegador no ejecuta nada
         if (!ex.getRequestMethod().equals("POST")) {
@@ -91,8 +143,13 @@ public class PanelWeb {
 
             //1.a que estaciones va la orden
             List<String> ids = new ArrayList<>();
+            // con TODAS y una provincia, solo las estaciones de esa provincia
+            String region = p.get("region");
+            boolean conRegion = region != null && !region.isEmpty() && !region.equals("TODAS");
             if (idWS.equals("TODAS")) {
-                for (Estacion ws : Estaciones.todas()) ids.add(ws.getId());
+                for (Estacion ws : Estaciones.todas()) {
+                    if (!conRegion || ws.getRegion().equals(region)) ids.add(ws.getId());
+                }
             } else {
                 ids.add(idWS);
             }
