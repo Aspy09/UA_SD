@@ -4,7 +4,7 @@
 # (una por linea: ID#ubicacion#region), asi solo hace falta escribir el ID.
 #
 # Uso:
-#   ./estacion.sh WS-05            -> una estacion, con el menu del engine en esta terminal
+#   ./estacion.sh WS-05            -> una estacion, y se abre su menu en esta terminal
 #   ./estacion.sh todas            -> todas las del fichero, en segundo plano
 #   ./estacion.sh todas 10         -> solo las 10 primeras
 #   ./estacion.sh menu WS-05       -> abrir el menu de una que esta en segundo plano
@@ -50,6 +50,29 @@ lanzar_engine() {
         engine "$KAFKA" "mon-$(nombre "$1"):8001" < /dev/null > /dev/null
 }
 
+# conectarse al menu del engine de una estacion que ya esta en marcha
+abrir_menu() {
+    echo "Menu de $1 (opcion 5 para salir, la estacion sigue funcionando)"
+
+    # conectarse al engine (--sig-proxy=false: nada de lo que pase aqui le llega como señal)
+    coproc ENGINE { exec docker attach --sig-proxy=false "eng-$(nombre "$1")" 2>&1; }
+    CONEXION=$ENGINE_PID
+    disown "$CONEXION" 2>/dev/null           # que bash no escriba "Killed" al cortarla
+    exec 3<&"${ENGINE[0]}" 4>&"${ENGINE[1]}"   # copiar la conexion a fd 3 (leer) y 4 (escribir)
+
+    # lo que escribe el engine sale por pantalla; cuando dice que se sale del menu, cortar la conexion
+    # (kill -9 porque con --sig-proxy=false docker attach no hace caso al kill normal)
+    ( tee /dev/tty <&3 | { grep -q "Has salido del menu" && kill -9 "$CONEXION" 2>/dev/null; } ) &
+
+    # lo que escribes tu le llega al engine (Enter al principio para que muestre el menu)
+    printf '\n' >&4
+    while kill -0 "$CONEXION" 2>/dev/null; do
+        if IFS= read -r -t 1 LINEA; then printf '%s\n' "$LINEA" >&4 2>/dev/null; fi
+    done
+    exec 3<&- 4>&-
+    echo
+}
+
 case "$1" in
 
     # ---------- todas las del fichero en segundo plano ----------
@@ -88,23 +111,7 @@ case "$1" in
             echo "El engine de $2 no estaba, lo arranco otra vez"
             sleep 3
         fi
-        echo "Menu de $2 (opcion 5 para salir, la estacion sigue funcionando)"
-
-        # conectarse al engine (--sig-proxy=false: nada de lo que pase aqui le llega como señal)
-        coproc ENGINE { exec docker attach --sig-proxy=false "eng-$(nombre "$2")" 2>&1; }
-        CONEXION=$ENGINE_PID
-        exec 3<&"${ENGINE[0]}" 4>&"${ENGINE[1]}"   # copiar la conexion a fd 3 (leer) y 4 (escribir)
-
-        # lo que escribe el engine sale por pantalla; cuando dice que se sale del menu, cortar la conexion
-        ( tee /dev/tty <&3 | { grep -q "Has salido del menu" && kill "$CONEXION" 2>/dev/null; } ) &
-
-        # lo que escribes tu le llega al engine (Enter al principio para que muestre el menu)
-        printf '\n' >&4
-        while kill -0 "$CONEXION" 2>/dev/null; do
-            if IFS= read -r -t 1 LINEA; then printf '%s\n' "$LINEA" >&4 2>/dev/null; fi
-        done
-        exec 3<&- 4>&-
-        echo
+        abrir_menu "$2"
         ;;
 
     # ---------- apagar todas ----------
@@ -133,10 +140,9 @@ case "$1" in
         fi
         docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
         lanzar_monitor "$ID" "$UBI" "$REG" || { echo "No se ha podido arrancar el monitor de $ID"; exit 1; }
-        echo "$ID ($UBI, region $REG) en marcha"
-        # al salir (Ctrl+C o fin del engine) apagar tambien su monitor
-        trap 'docker rm -f "mon-$(nombre "$ID")" > /dev/null 2>&1' EXIT
-        # engine en primer plano, con su menu
-        dc run --rm --no-deps --name "eng-$(nombre "$ID")" engine "$KAFKA" "mon-$(nombre "$ID"):8001"
+        lanzar_engine "$ID"
+        echo "$ID ($UBI, region $REG) en marcha (para apagarla: ./estacion.sh parar)"
+        sleep 3   # que el engine arranque antes de abrir su menu
+        abrir_menu "$ID"
         ;;
 esac
