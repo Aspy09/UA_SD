@@ -56,8 +56,9 @@ public class Riegos {
         notificar(origen, "INFO#" + origen + "#" + idWS + "#Validando estacion");
         Operaciones.paso(op, "INFO a " + origen + ": validando estacion");
 
-        //1.si es un operario mirar que existe en la bd
-        if (origen.startsWith("FO-")) {
+        //1.mirar quien lo pide: solo puede ser la central (panel), la propia estacion (su menu)
+        //  o un operario dado de alta en la bd. cualquier otro se deniega
+        if (!origen.equals("CENTRAL") && !origen.equals(idWS)) {
             try {
                 if (!BaseDatos.existeOperario(origen)) {
                     denegar(op, origen, idWS, "OPERARIO_NO_EXISTE");
