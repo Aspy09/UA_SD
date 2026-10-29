@@ -1,0 +1,15 @@
+FO-01#Ana Garcia#ALICANTE
+FO-02#Luis Martinez#ALICANTE
+FO-03#Marta Lopez#ALICANTE
+FO-04#Pablo Sanchez#VALENCIA
+FO-05#Lucia Navarro#VALENCIA
+FO-06#Jorge Ruiz#VALENCIA
+FO-07#Elena Romero#MADRID
+FO-08#David Torres#MADRID
+FO-09#Sara Moreno#MADRID
+FO-10#Jordi Puig#BARCELONA
+FO-11#Laia Ferrer#BARCELONA
+FO-12#Marc Soler#BARCELONA
+FO-13#Carmen Ortega#SEVILLA
+FO-14#Manuel Rubio#SEVILLA
+FO-15#Rocio Delgado#SEVILLA
