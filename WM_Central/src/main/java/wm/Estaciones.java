@@ -1,7 +1,9 @@
 package wm;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 // estado de todas las estaciones, lo comparten todos los hilos de la central
@@ -141,13 +143,19 @@ public class Estaciones {
         if (ws.getEstado() != EstadoWS.DISPONIBLE) return ws.getEstado().toString();
         ws.setOperario(origen);
         ws.setOperacion(op);
+        ws.setReservadaDesde(System.currentTimeMillis()); // para saber si tarda demasiado en contestar
         return null;
     }
 
     // el engine ya ha empezado a regar, devuelve quien lo pidio
     public static synchronized String empezarRiego(String id) {
         Estacion ws = estaciones.get(id);
-        if (ws == null || ws.getOperario() == null) return null;
+        if (ws == null) return null;
+        // nadie le ha pedido regar (por ejemplo la reserva se cancelo porque tardo): que pare
+        if (ws.getOperario() == null) {
+            KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
+            return null;
+        }
 
         // si mientras tanto se ha averiado o bloqueado que pare
         if (ws.getEstado() != EstadoWS.DISPONIBLE) {
@@ -157,6 +165,7 @@ public class Estaciones {
         }
         ws.setCaudal(0);
         ws.setVolumen(0);
+        ws.setReservadaDesde(0); // ya ha contestado, ya no cuenta el tiempo
         cambiarEstado(ws, EstadoWS.REGANDO);
         return ws.getOperario();
     }
@@ -177,6 +186,7 @@ public class Estaciones {
         String operario = ws.getOperario();
         ws.setOperario(null);
         ws.setOperacion(null);
+        ws.setReservadaDesde(0);
         ws.setCaudal(0);
 
         // si estaba regando vuelve a disponible, si tiene fuga o esta desconectada se queda igual
@@ -184,6 +194,23 @@ public class Estaciones {
             cambiarEstado(ws, ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
         }
         return operario;
+    }
+
+    // reservas que la estacion no ha confirmado en maxMs: se cancelan para que la estacion no se quede
+    // reservada para siempre si su engine no contesta. devuelve {id, origen, operacion} de cada una
+    public static synchronized List<String[]> cancelarReservasSinRespuesta(long maxMs) {
+        List<String[]> canceladas = new ArrayList<>();
+        long ahora = System.currentTimeMillis();
+        for (Estacion ws : estaciones.values()) {
+            if (ws.getOperario() != null && ws.getEstado() != EstadoWS.REGANDO
+                    && ws.getReservadaDesde() > 0 && ahora - ws.getReservadaDesde() > maxMs) {
+                canceladas.add(new String[] { ws.getId(), ws.getOperario(), ws.getOperacion() });
+                ws.setOperario(null);
+                ws.setOperacion(null);
+                ws.setReservadaDesde(0);
+            }
+        }
+        return canceladas;
     }
 
     // numero de la operacion de riego que tiene la estacion (null si ninguna)
