@@ -145,7 +145,7 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 |---|---|
 | `INFO#<id_fo>#<id_ws>#<texto>` | Pasos intermedios ("Validando estacion", "Esperando confirmacion de la WS"…). |
 | `AUTORIZADO#<id_fo>#<id_ws>` | La WS ha confirmado `INICIADO`. |
-| `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`. |
+| `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`, `SIN_RESPUESTA` (la estación no confirmó el riego en 15 s: se cancela la reserva). |
 | `RIEGO#<id_fo>#<id_ws>#<caudal>#<volumen>` | Reenvío de la telemetría solo al FO que pidió el riego. |
 | `RESUMEN#<id_fo>#<id_ws>#<volumen_total>#<duracion_s>#<motivo>` | Al terminar. Tras esto el FO espera 4 s y pide el siguiente servicio del fichero. |
 
