@@ -59,7 +59,11 @@ case "$1" in
                 continue
             fi
             docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
-            lanzar_monitor "$ID" "$UBI" "$REG"
+            # si el monitor no arranca (por ejemplo docker aun esta borrando el anterior) lo intento otra vez
+            if ! lanzar_monitor "$ID" "$UBI" "$REG"; then
+                sleep 2
+                lanzar_monitor "$ID" "$UBI" "$REG" || { echo "$ID: no se ha podido arrancar el monitor"; continue; }
+            fi
             lanzar_engine "$ID"
             echo "$ID ($UBI, region $REG) en marcha"
         done
@@ -97,7 +101,9 @@ case "$1" in
 
     # ---------- apagar todas ----------
     parar)
-        docker rm -f $(docker ps -q --filter name=mon-ws --filter name=eng-ws) > /dev/null 2>&1
+        docker rm -f $(docker ps -aq --filter name=mon-ws --filter name=eng-ws) > /dev/null 2>&1
+        # esperar a que docker termine de borrarlos, si no al volver a lanzarlas chocan los nombres
+        while [ -n "$(docker ps -aq --filter name=mon-ws --filter name=eng-ws)" ]; do sleep 1; done
         echo "Estaciones apagadas"
         ;;
 
