@@ -140,6 +140,10 @@ public class App {
                 case "2":
                     verEstaciones();
                     break;
+                case "3":
+                    // salir sin tener que hacer Ctrl+C (el hook del consumidor se despide de kafka)
+                    System.out.println("Hasta luego " + idFO);
+                    System.exit(0);
                 case "":
                     break; // volver a mostrar menu
                 default:
@@ -152,7 +156,7 @@ public class App {
     static void mostrarMenu() {
         System.out.println();
         System.out.println("=== Operario " + idFO + (region != null ? " (" + region + ")" : "") + " ===");
-        System.out.println("1) Pedir riego  2) Ver estaciones");
+        System.out.println("1) Pedir riego  2) Ver estaciones  3) Salir");
         System.out.print("Opcion: ");
     }
 
