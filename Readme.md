@@ -165,6 +165,9 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 ### Trazabilidad
 Cada riego que llega a la CENTRAL recibe un número de operación (`OP-0001`, `OP-0002`...). La CENTRAL apunta con la hora cada paso de esa operación (solicitud, validación, `INICIAR`, `INICIADO`, telemetría, `FIN`, `RESUMEN` o `DENEGADO`) y el panel muestra la historia completa de cada riego.
 
+### Órdenes de la CENTRAL
+Las órdenes a una o todas las WS (regar, bloquear, activar, dar de baja) se pueden dar desde el panel web o desde el menú de la CENTRAL en su terminal. Con `TODAS` se puede elegir también una provincia. Si la CENTRAL corre en docker, al menú se entra con `docker attach` a su contenedor.
+
 ### Operarios
 Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt` (`FO-01#nombre#provincia`, 3 por provincia). La CENTRAL los da de alta en la BD al arrancar. Un operario solo ve y solo puede regar las estaciones de su provincia (`operario.sh` le pasa la provincia en la variable `REGION`; aunque no la tenga, la CENTRAL lo comprueba y deniega con `OTRA_PROVINCIA`). Para salir: opción 3 del menú del operario y opción 5 del menú de la estación (la estación sigue funcionando).
 

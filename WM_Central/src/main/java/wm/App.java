@@ -79,6 +79,7 @@ public class App
         }
 
         System.out.println("Central escuchando en el puerto " + puerto);
+        new MenuCentral().start(); // menu en la terminal para regar, bloquear, activar o dar de baja
 
         //6. esperar una conexion de un cliente
         for(;;){
