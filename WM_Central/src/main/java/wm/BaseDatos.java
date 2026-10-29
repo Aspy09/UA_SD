@@ -1,5 +1,9 @@
 package wm;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,28 +35,52 @@ public class BaseDatos {
             }
             st.execute("CREATE TABLE IF NOT EXISTS operarios ("
                     + "id TEXT PRIMARY KEY, "
-                    + "nombre TEXT NOT NULL)");
-        }
-        crearOperariosDePrueba();
-    }
-
-    // si no hay operarios metemos unos cuantos para probar
-    private static void crearOperariosDePrueba() throws SQLException {
-        try (Statement st = conexion.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM operarios")) {
-            if (rs.getInt(1) > 0) return;
-        }
-
-        String[][] operarios = { { "FO-01", "Ana" }, { "FO-02", "Luis" }, { "FO-03", "Marta" } };
-
-        // con ? y setString evitamos inyeccion sql
-        try (PreparedStatement ps = conexion.prepareStatement("INSERT INTO operarios (id, nombre) VALUES (?, ?)")) {
-            for (String[] op : operarios) {
-                ps.setString(1, op[0]);
-                ps.setString(2, op[1]);
-                ps.executeUpdate();
+                    + "nombre TEXT NOT NULL, "
+                    + "region TEXT NOT NULL DEFAULT 'ALICANTE')");
+            // igual que con las estaciones: si la bd es antigua le añado la columna region
+            try {
+                st.execute("ALTER TABLE operarios ADD COLUMN region TEXT NOT NULL DEFAULT 'ALICANTE'");
+            } catch (SQLException e) {
+                // ya existia
             }
         }
+        cargarOperarios();
+    }
+
+    // dar de alta los operarios de operarios.txt (va dentro del jar, una linea por operario: FO-01#nombre#provincia)
+    // si ya estaban se actualizan, asi si añado operarios al fichero se dan de alta al arrancar
+    private static void cargarOperarios() throws SQLException {
+        String sql = "INSERT INTO operarios (id, nombre, region) VALUES (?, ?, ?) "
+                + "ON CONFLICT(id) DO UPDATE SET nombre = excluded.nombre, region = excluded.region";
+        try (InputStream in = BaseDatos.class.getResourceAsStream("/operarios.txt");
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+            if (in == null) return; // no hay fichero, no se da de alta ninguno
+            BufferedReader lector = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            String linea;
+            while ((linea = lector.readLine()) != null) {
+                String[] c = linea.trim().split("#");
+                if (c.length != 3) continue; // linea vacia o mal escrita
+                // con ? y setString evitamos inyeccion sql
+                ps.setString(1, c[0]);
+                ps.setString(2, c[1]);
+                ps.setString(3, c[2]);
+                ps.executeUpdate();
+            }
+        } catch (java.io.IOException e) {
+            System.out.println("[BD] No se puede leer operarios.txt: " + e.getMessage());
+        }
+    }
+
+    // todos los operarios (id, nombre, provincia), para el panel
+    public static synchronized List<String[]> listarOperarios() throws SQLException {
+        List<String[]> lista = new ArrayList<>();
+        try (Statement st = conexion.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id, nombre, region FROM operarios ORDER BY id")) {
+            while (rs.next()) {
+                lista.add(new String[] { rs.getString("id"), rs.getString("nombre"), rs.getString("region") });
+            }
+        }
+        return lista;
     }
 
     // devuelve todas las estaciones guardadas (empiezan desconectadas)
