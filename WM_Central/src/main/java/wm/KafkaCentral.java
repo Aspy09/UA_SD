@@ -19,6 +19,8 @@ public class KafkaCentral {
     public static final String TELEMETRIA = "wm.telemetria";
     public static final String NOTIFICACIONES = "wm.notificaciones";
     public static final String ESTACIONES = "wm.estaciones";
+    // los otros modulos (engine, operario) mandan aqui sus errores: ERROR#quien#texto
+    public static final String ERRORES = "wm.errores";
 
     // provincias: cada una tiene su propio topic de ordenes (wm.ordenes.ALICANTE...)
     // asi cada engine solo recibe las ordenes de su provincia y no las de todas
@@ -54,7 +56,7 @@ public class KafkaCentral {
 
             //2.apuntar los que no estan
             List<NewTopic> nuevos = new ArrayList<>();
-            List<String> topics = new ArrayList<>(List.of(SOLICITUDES, TELEMETRIA, NOTIFICACIONES, ESTACIONES));
+            List<String> topics = new ArrayList<>(List.of(SOLICITUDES, TELEMETRIA, NOTIFICACIONES, ESTACIONES, ERRORES));
             for (String r : REGIONES) topics.add(ordenes(r)); // y uno de ordenes por provincia
             for (String topic : topics) {
                 if (!existentes.contains(topic)) {
