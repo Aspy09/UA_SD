@@ -28,9 +28,10 @@ public class Estaciones {
         publicar(ws);
     }
 
+    // ESTADO#id#ubicacion#estado#provincia (la provincia para que cada operario vea solo las suyas)
     private static void publicar(Estacion ws) {
         KafkaCentral.enviar(KafkaCentral.ESTACIONES, ws.getId(),
-                "ESTADO#" + ws.getId() + "#" + ws.getUbicacion() + "#" + ws.getEstado());
+                "ESTADO#" + ws.getId() + "#" + ws.getUbicacion() + "#" + ws.getEstado() + "#" + ws.getRegion());
     }
 
     // al arrancar mandar el estado de todas para que los fo las vean
@@ -129,6 +130,8 @@ public class Estaciones {
         }
         estaciones.remove(id);
         Mensajes.add("CENTRAL da de baja " + id + " (" + ws.getUbicacion() + ")");
+        // avisar a los operarios para que la quiten de su lista
+        KafkaCentral.enviar(KafkaCentral.ESTACIONES, id, "BAJA#" + id);
         return null;
     }
 
