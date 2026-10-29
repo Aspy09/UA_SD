@@ -36,6 +36,9 @@ services:
       - "8080:8080"         # panel web: http://localhost:8080
     volumes:
       - central-datos:/data   # la bd sqlite sobrevive a los reinicios
+    # para poder usar el menu de la central con  docker attach ua_sd-central-1
+    stdin_open: true
+    tty: true
     depends_on:
       kafka:
         condition: service_healthy
