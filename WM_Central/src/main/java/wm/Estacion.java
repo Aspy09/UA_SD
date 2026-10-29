@@ -10,6 +10,7 @@ public class Estacion {
 
     // datos del riego para el panel
     private String operario; // quien pidio el riego, null si esta libre
+    private String operacion; // numero del riego que esta haciendo (OP-0007), para la trazabilidad
     private double caudal;   // litros por minuto
     private double volumen;  // litros que lleva
 
@@ -26,6 +27,7 @@ public class Estacion {
     public EstadoWS getEstado() { return estado; }
     public boolean isBloqueada() { return bloqueada; }
     public String getOperario() { return operario; }
+    public String getOperacion() { return operacion; }
     public double getCaudal() { return caudal; }
     public double getVolumen() { return volumen; }
 
@@ -34,6 +36,7 @@ public class Estacion {
     public void setEstado(EstadoWS estado) { this.estado = estado; }
     public void setBloqueada(boolean bloqueada) { this.bloqueada = bloqueada; }
     public void setOperario(String operario) { this.operario = operario; }
+    public void setOperacion(String operacion) { this.operacion = operacion; }
     public void setCaudal(double caudal) { this.caudal = caudal; }
     public void setVolumen(double volumen) { this.volumen = volumen; }
 
