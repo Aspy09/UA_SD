@@ -35,15 +35,18 @@ region() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f3; }
 en_marcha() { [ -n "$(docker ps -q --filter "name=^mon-$(nombre "$1")$")" ]; }
 engine_en_marcha() { [ -n "$(docker ps -q --filter "name=^eng-$(nombre "$1")$")" ]; }
 
+# --progress quiet: que no salgan los mensajes de "Container ... Creating/Created"
+dc() { docker compose --progress quiet "$@"; }
+
 # arranca el monitor de una estacion en segundo plano (id, ubicacion, region)
 lanzar_monitor() {
-    docker compose run -d --rm --no-deps --name "mon-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx32m \
+    dc run -d --rm --no-deps --name "mon-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx32m \
         monitor 8001 "$CENTRAL" "$1" "$2" "$3" < /dev/null > /dev/null
 }
 
 # arranca el engine de una estacion en segundo plano, conectado a su monitor
 lanzar_engine() {
-    docker compose run -d --rm --no-deps --name "eng-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
+    dc run -d --rm --no-deps --name "eng-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
         engine "$KAFKA" "mon-$(nombre "$1"):8001" < /dev/null > /dev/null
 }
 
@@ -134,6 +137,6 @@ case "$1" in
         # al salir (Ctrl+C o fin del engine) apagar tambien su monitor
         trap 'docker rm -f "mon-$(nombre "$ID")" > /dev/null 2>&1' EXIT
         # engine en primer plano, con su menu
-        docker compose run --rm --no-deps --name "eng-$(nombre "$ID")" engine "$KAFKA" "mon-$(nombre "$ID"):8001"
+        dc run --rm --no-deps --name "eng-$(nombre "$ID")" engine "$KAFKA" "mon-$(nombre "$ID"):8001"
         ;;
 esac
