@@ -10,6 +10,14 @@ public class Riegos {
     public static void procesar(String topic, String mensaje) {
         String[] c = mensaje.split("#");
 
+        // error de otro modulo: ERROR#quien#texto -> a las alertas del panel
+        if (topic.equals(KafkaCentral.ERRORES)) {
+            String[] e = mensaje.split("#", 3); // el texto puede llevar # dentro
+            if (e.length == 3) Mensajes.alerta("Error en " + e[1] + ": " + e[2]);
+            else Mensajes.alerta("Error de otro modulo: " + mensaje);
+            return;
+        }
+
         if (topic.equals(KafkaCentral.SOLICITUDES)) {
             // RIEGO#origen#id_ws#segundos
             if (c[0].equals("RIEGO") && c.length == 4) {
