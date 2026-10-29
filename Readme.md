@@ -111,6 +111,7 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 | `wm.telemetria` | Engines → CENTRAL |
 | `wm.notificaciones` | CENTRAL → FO |
 | `wm.estaciones` | CENTRAL → FO (estado de todas las WS) |
+| `wm.errores` | Engines y FO → CENTRAL (sus errores, salen en las alertas del panel) |
 
 **group.id:** CENTRAL usa `central`. Cada Engine usa su ID (`WS-01`) y cada FO el suyo (`FO-01`), para que **todos** reciban todos los mensajes del topic y cada uno filtre los que le tocan.
 
@@ -154,6 +155,17 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 | `ESTADO#<id_ws>#<ubicacion>#<estado>` | Cada vez que cambia el estado de una WS (y una vez por WS al arrancar CENTRAL). |
 
 ---
+
+### `wm.errores` (Engines y FO → CENTRAL)
+| Mensaje | Cuándo |
+|---|---|
+| `ERROR#<quien>#<texto>` | Un módulo tiene un problema: el Engine pierde su Monitor, el FO no puede leer su fichero o tiene una línea mal escrita, piden una estación o unos segundos no válidos... La CENTRAL lo muestra en **Alertas**. |
+
+### Trazabilidad
+Cada riego que llega a la CENTRAL recibe un número de operación (`OP-0001`, `OP-0002`...). La CENTRAL apunta con la hora cada paso de esa operación (solicitud, validación, `INICIAR`, `INICIADO`, telemetría, `FIN`, `RESUMEN` o `DENEGADO`) y el panel muestra la historia completa de cada riego.
+
+### Operarios
+Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt` (`FO-01#nombre#provincia`, 3 por provincia). La CENTRAL los da de alta en la BD al arrancar.
 
 ## 6. Ejemplo completo: un riego pedido por un operario
 
