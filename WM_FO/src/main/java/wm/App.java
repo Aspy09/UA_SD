@@ -15,6 +15,7 @@ import java.util.Scanner;
 
 public class App {
     private static String idFO;
+    private static String region; // provincia del operario (variable REGION), null = ver todas
     // el consumidor deja aca el id de la estacion cuando una peticion termina (RESUMEN o DENEGADO)
     private static final BlockingQueue<String> finalizados = new LinkedBlockingQueue<>();
     private static volatile boolean enFichero = false; // mientras corre el fichero no se meustra el menu
@@ -88,6 +89,9 @@ public class App {
             System.exit(1);
         }
         idFO = args[1];
+        // la provincia la pone operario.sh segun operarios.txt
+        region = System.getenv("REGION");
+        if (region != null && region.isBlank()) region = null;
 
         // 2) Kafka solo va a mostrar sus errores
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
@@ -136,6 +140,10 @@ public class App {
                 case "2":
                     verEstaciones();
                     break;
+                case "3":
+                    // salir sin tener que hacer Ctrl+C (el hook del consumidor se despide de kafka)
+                    System.out.println("Hasta luego " + idFO);
+                    System.exit(0);
                 case "":
                     break; // volver a mostrar menu
                 default:
@@ -147,8 +155,8 @@ public class App {
 
     static void mostrarMenu() {
         System.out.println();
-        System.out.println("=== Operario " + idFO + " ===");
-        System.out.println("1) Pedir riego  2) Ver estaciones");
+        System.out.println("=== Operario " + idFO + (region != null ? " (" + region + ")" : "") + " ===");
+        System.out.println("1) Pedir riego  2) Ver estaciones  3) Salir");
         System.out.print("Opcion: ");
     }
 
@@ -183,10 +191,19 @@ public class App {
         }
     }
 
-    // ESTADO#id_ws#ubicacion#estado (de wm.estaciones)
+    // de wm.estaciones: ESTADO#id_ws#ubicacion#estado#provincia o BAJA#id_ws
     static void actualizarEstacion(String mensaje) {
         String[] c = mensaje.split("#");
-        estaciones.put(c[1], c[2] + ": " + c[3]);
+        if (c[0].equals("BAJA")) {
+            estaciones.remove(c[1]); // la central la ha dado de baja, ya no se enseña
+            return;
+        }
+        String provincia = c.length >= 5 ? c[4] : null; // los mensajes viejos no la traen
+        if (region != null && !region.equals(provincia)) {
+            estaciones.remove(c[1]); // no es de mi provincia
+            return;
+        }
+        estaciones.put(c[1], c[2] + (region == null && provincia != null ? " (" + provincia + ")" : "") + ": " + c[3]);
     }
 
     // mensajes de wm.notificaciones: solo importan los de nuestro id
@@ -225,6 +242,7 @@ public class App {
             System.out.println("No se conoce ninguna estacion todavia");
             return;
         }
+        if (region != null) System.out.println("Estaciones de " + region + ":");
         for (Map.Entry<String, String> e : estaciones.entrySet()) {
             System.out.println(e.getKey() + " - " + e.getValue());
         }

@@ -60,11 +60,18 @@ public class Riegos {
         //  o un operario dado de alta en la bd. cualquier otro se deniega
         if (!origen.equals("CENTRAL") && !origen.equals(idWS)) {
             try {
-                if (!BaseDatos.existeOperario(origen)) {
+                String regionOperario = BaseDatos.regionOperario(origen); // null si no esta dado de alta
+                if (regionOperario == null) {
                     denegar(op, origen, idWS, "OPERARIO_NO_EXISTE");
                     return;
                 }
-                Operaciones.paso(op, "El operario " + origen + " existe en la bd");
+                Operaciones.paso(op, "El operario " + origen + " existe en la bd (" + regionOperario + ")");
+                // un operario solo puede regar estaciones de su provincia
+                String regionEstacion = Estaciones.region(idWS);
+                if (regionEstacion != null && !regionEstacion.equals(regionOperario)) {
+                    denegar(op, origen, idWS, "OTRA_PROVINCIA");
+                    return;
+                }
             } catch (SQLException e) {
                 denegar(op, origen, idWS, "ERROR_BD");
                 return;

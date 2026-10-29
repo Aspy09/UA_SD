@@ -119,6 +119,16 @@ public class BaseDatos {
         }
     }
 
+    // provincia de un operario, o null si no esta dado de alta
+    public static synchronized String regionOperario(String id) throws SQLException {
+        try (PreparedStatement ps = conexion.prepareStatement("SELECT region FROM operarios WHERE id = ?")) {
+            ps.setString(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("region") : null;
+            }
+        }
+    }
+
     // para comprobar las peticiones de riego de los operarios
     public static synchronized boolean existeOperario(String id) throws SQLException {
         try (PreparedStatement ps = conexion.prepareStatement("SELECT 1 FROM operarios WHERE id = ?")) {

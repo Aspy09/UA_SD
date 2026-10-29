@@ -19,6 +19,12 @@ FICHERO="WM_Central/src/main/resources/operarios.txt"
 # nombre del contenedor: FO-05 -> op-fo-05
 nombre() { echo "$1" | tr 'A-Z' 'a-z'; }
 
+# provincia de un operario segun el fichero (asi solo ve las estaciones de su provincia)
+region() { grep -m1 "^$1#" "$FICHERO" | cut -d'#' -f3; }
+
+# --progress quiet: que no salgan los mensajes de "Container ... Creating/Created"
+dc() { docker compose --progress quiet "$@"; }
+
 case "$1" in
 
     # ---------- lista de operarios ----------
@@ -35,7 +41,7 @@ case "$1" in
         PETICIONES="$(realpath "$2")"
         head -n "${3:-1000}" "$FICHERO" | while IFS='#' read -r ID NOMBRE REG; do
             [ -z "$ID" ] && continue
-            docker compose run -d --rm --no-deps --name "op-$(nombre "$ID")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
+            dc run -d --rm --no-deps --name "op-$(nombre "$ID")" -e JAVA_TOOL_OPTIONS=-Xmx64m -e REGION="$REG" \
                 -v "$PETICIONES:/app/peticiones.txt:ro" fo "$KAFKA" "$ID" peticiones.txt < /dev/null > /dev/null
             echo "$ID ($NOMBRE, $REG) en marcha con $2"
         done
@@ -57,9 +63,9 @@ case "$1" in
         # avisar si el id no esta en la lista (la central le denegara los riegos)
         grep -q "^$1#" "$FICHERO" || echo "Ojo: $1 no esta en $FICHERO, la central no lo conoce. Mira ./operario.sh lista"
         if [ -n "$2" ]; then
-            docker compose run --rm --no-deps -v "$(realpath "$2"):/app/peticiones.txt:ro" fo "$KAFKA" "$1" peticiones.txt
+            dc run --rm --no-deps -e REGION="$(region "$1")" -v "$(realpath "$2"):/app/peticiones.txt:ro" fo "$KAFKA" "$1" peticiones.txt
         else
-            docker compose run --rm --no-deps fo "$KAFKA" "$1"
+            dc run --rm --no-deps -e REGION="$(region "$1")" fo "$KAFKA" "$1"
         fi
         ;;
 esac

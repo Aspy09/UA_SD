@@ -145,14 +145,15 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 |---|---|
 | `INFO#<id_fo>#<id_ws>#<texto>` | Pasos intermedios ("Validando estacion", "Esperando confirmacion de la WS"…). |
 | `AUTORIZADO#<id_fo>#<id_ws>` | La WS ha confirmado `INICIADO`. |
-| `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`, `SIN_RESPUESTA` (la estación no confirmó el riego en 15 s: se cancela la reserva). |
+| `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`, `OTRA_PROVINCIA` (el operario pide una estación que no es de su provincia), `SIN_RESPUESTA` (la estación no confirmó el riego en 15 s: se cancela la reserva). |
 | `RIEGO#<id_fo>#<id_ws>#<caudal>#<volumen>` | Reenvío de la telemetría solo al FO que pidió el riego. |
 | `RESUMEN#<id_fo>#<id_ws>#<volumen_total>#<duracion_s>#<motivo>` | Al terminar. Tras esto el FO espera 4 s y pide el siguiente servicio del fichero. |
 
 ### `wm.estaciones` (CENTRAL → todos los FO)
 | Mensaje | Cuándo |
 |---|---|
-| `ESTADO#<id_ws>#<ubicacion>#<estado>` | Cada vez que cambia el estado de una WS (y una vez por WS al arrancar CENTRAL). |
+| `ESTADO#<id_ws>#<ubicacion>#<estado>#<provincia>` | Cada vez que cambia el estado de una WS (y una vez por WS al arrancar CENTRAL). Cada FO solo guarda las de su provincia. |
+| `BAJA#<id_ws>` | Cuando se da de baja una WS desde el panel. Los FO la quitan de su lista. |
 
 ---
 
@@ -165,7 +166,7 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 Cada riego que llega a la CENTRAL recibe un número de operación (`OP-0001`, `OP-0002`...). La CENTRAL apunta con la hora cada paso de esa operación (solicitud, validación, `INICIAR`, `INICIADO`, telemetría, `FIN`, `RESUMEN` o `DENEGADO`) y el panel muestra la historia completa de cada riego.
 
 ### Operarios
-Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt` (`FO-01#nombre#provincia`, 3 por provincia). La CENTRAL los da de alta en la BD al arrancar.
+Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt` (`FO-01#nombre#provincia`, 3 por provincia). La CENTRAL los da de alta en la BD al arrancar. Un operario solo ve y solo puede regar las estaciones de su provincia (`operario.sh` le pasa la provincia en la variable `REGION`; aunque no la tenga, la CENTRAL lo comprueba y deniega con `OTRA_PROVINCIA`). Para salir: opción 3 del menú del operario y opción 5 del menú de la estación (la estación sigue funcionando).
 
 ## 6. Ejemplo completo: un riego pedido por un operario
 
