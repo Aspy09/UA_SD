@@ -20,6 +20,7 @@
     --gris: #8a958f;
     --gris-claro: #eef0ef;
     --azul: #1f6fb2;
+    --azul-claro: #e4eef8;
     --cabecera: #14332a;
     --radio: 12px;
     --sombra: 0 1px 2px rgba(20, 40, 30, .06), 0 4px 14px rgba(20, 40, 30, .06);
@@ -43,6 +44,19 @@
 
   main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 32px; }
 
+  /* ---------- pestañas de provincias ---------- */
+  .pestanas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .pestana {
+    background: var(--tarjeta); color: var(--texto); border: 2px solid transparent; box-shadow: var(--sombra);
+    padding: 9px 14px; border-radius: 999px; font-weight: 600; font-size: 14px;
+  }
+  .pestana span { background: var(--fondo); color: var(--suave); border-radius: 999px; padding: 1px 8px; margin-left: 6px; font-size: 12px; }
+  .pestana.activa { background: var(--cabecera); color: #fff; }
+  .pestana.activa span { background: rgba(255, 255, 255, .18); color: #fff; }
+  .info-region { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: var(--suave); }
+  .info-region b { color: var(--texto); }
+  .info-region code { background: var(--azul-claro); color: var(--azul); padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+
   /* ---------- resumen ---------- */
   .resumen { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
   @media (max-width: 800px) { .resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -50,7 +64,7 @@
   .kpi .num { font-size: 28px; font-weight: 700; line-height: 1; }
   .kpi .nombre { font-size: 13px; color: var(--suave); margin-top: 6px; }
 
-  .contenido { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  .contenido { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
   @media (max-width: 1000px) { .contenido { grid-template-columns: minmax(0, 1fr); } }
 
   h2 { margin: 0 0 12px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); display: flex; justify-content: space-between; align-items: baseline; }
@@ -92,33 +106,50 @@
 
   .vacio { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 32px; text-align: center; color: var(--suave); }
 
+  /* ---------- operaciones (trazabilidad) ---------- */
+  .operaciones { margin-top: 24px; }
+  .op { background: var(--tarjeta); border-radius: 10px; box-shadow: var(--sombra); margin-bottom: 8px; overflow: hidden; }
+  .op .cab { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; cursor: pointer; font-size: 14px; }
+  .op .cab b { font-variant-numeric: tabular-nums; }
+  .op .cab .datos-op { color: var(--suave); flex: 1; }
+  .etiqueta { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; background: var(--gris); }
+  .etiqueta.curso { background: var(--azul); }
+  .etiqueta.bien { background: var(--verde); }
+  .etiqueta.mal { background: var(--rojo); }
+  .etiqueta.cortada { background: var(--naranja); }
+  .op ol { margin: 0; padding: 4px 14px 12px 36px; font-size: 13px; border-top: 1px solid var(--borde); background: #fafcfb; }
+  .op li { padding: 3px 0; }
+  .op li .hora { color: var(--suave); font-variant-numeric: tabular-nums; margin-right: 6px; }
+
   /* ---------- panel lateral ---------- */
   .lateral { display: grid; gap: 20px; }
   .caja { background: var(--tarjeta); border-radius: var(--radio); box-shadow: var(--sombra); padding: 16px; }
+  .caja.alertas { border-top: 4px solid var(--rojo); }
+  .caja.alertas h2 { color: var(--rojo); }
   .elegida-info { background: var(--fondo); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
   .elegida-info b { font-size: 16px; }
   label { display: block; font-size: 13px; color: var(--suave); margin: 10px 0 6px; }
   select, input { width: 100%; padding: 9px 10px; font-size: 14px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: var(--texto); }
-  .botones { display: grid; gap: 8px; margin-top: 14px; }
+  .botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
   button { padding: 11px; font-size: 14px; font-weight: 600; border: 0; border-radius: 8px; color: #fff; cursor: pointer; transition: filter .12s; }
   button:hover { filter: brightness(1.08); }
-  #bRiego { background: var(--verde); }
+  #bRiego { background: var(--verde); grid-column: 1 / -1; }
   #bBloquear { background: var(--naranja); }
   #bActivar { background: var(--azul); }
-  #bBaja { background: var(--gris); }
+  #bBaja { background: var(--gris); grid-column: 1 / -1; }
 
-  .leyenda { display: grid; gap: 6px; font-size: 13px; }
-  .leyenda div { display: flex; align-items: center; gap: 8px; }
-  .muestra { width: 14px; height: 14px; border-radius: 4px; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+  .leyenda div { display: flex; align-items: center; gap: 6px; }
+  .muestra { width: 12px; height: 12px; border-radius: 3px; }
 
-  #mensajes { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 13px; }
-  #mensajes li { padding: 7px 0 7px 10px; border-left: 3px solid var(--borde); margin-bottom: 4px; }
-  #mensajes li .hora { color: var(--suave); font-variant-numeric: tabular-nums; margin-right: 6px; }
-  #mensajes li.rojo { border-color: var(--rojo); }
-  #mensajes li.naranja { border-color: var(--naranja); }
-  #mensajes li.verde { border-color: var(--verde); }
-  #mensajes li.gris { border-color: var(--gris); }
-  #mensajes li.azul { border-color: var(--azul); }
+  .mensajes { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; font-size: 13px; }
+  .mensajes li { padding: 6px 0 6px 10px; border-left: 3px solid var(--borde); margin-bottom: 4px; }
+  .mensajes li .hora { color: var(--suave); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .mensajes li.rojo { border-color: var(--rojo); background: var(--rojo-claro); }
+  .mensajes li.gris { border-color: var(--gris); background: var(--gris-claro); }
+  .mensajes li.naranja { border-color: var(--naranja); }
+  .mensajes li.verde { border-color: var(--verde); }
+  .mensajes li.azul { border-color: var(--azul); }
 
   /* aviso que sale abajo al mandar una orden */
   #aviso {
@@ -137,19 +168,29 @@
     <div class="logo">💧</div>
     <div>
       <h1>WaterManagement · Central</h1>
-      <p>Red de riego de parques y jardines</p>
+      <p>Red de riego de parques y jardines por provincias</p>
     </div>
   </div>
   <div class="conexion" id="conexion"><span class="punto"></span><span id="textoConexion">Conectando…</span></div>
 </header>
 
 <main>
+  <!-- pestañas: todas o una provincia -->
+  <div class="pestanas" id="pestanas"></div>
+  <div class="info-region" id="infoRegion"></div>
+
   <div class="resumen" id="resumen"></div>
 
   <div class="contenido">
     <section>
       <h2>Estaciones de riego <small>Haz clic en una para seleccionarla</small></h2>
       <div class="estaciones" id="estaciones"></div>
+
+      <!-- trazabilidad: cada riego con su numero y todos sus pasos -->
+      <div class="operaciones">
+        <h2>Operaciones de riego <small>Haz clic en una para ver todos sus pasos</small></h2>
+        <div id="operaciones"></div>
+      </div>
     </section>
 
     <aside class="lateral">
@@ -168,6 +209,17 @@
         </div>
       </div>
 
+      <!-- alertas aparte de lo normal: fugas, desconexiones, denegaciones y errores de otros modulos -->
+      <div class="caja alertas">
+        <h2>🔴 Alertas <small id="numAlertas"></small></h2>
+        <ul class="mensajes" id="alertas"></ul>
+      </div>
+
+      <div class="caja">
+        <h2>📋 Actividad</h2>
+        <ul class="mensajes" id="actividad"></ul>
+      </div>
+
       <div class="caja">
         <h2>Leyenda</h2>
         <div class="leyenda">
@@ -177,11 +229,6 @@
           <div><span class="muestra" style="background:var(--naranja)"></span>Fuera de servicio</div>
           <div><span class="muestra" style="background:var(--gris)"></span>Desconectada</div>
         </div>
-      </div>
-
-      <div class="caja">
-        <h2>Mensajes</h2>
-        <ul id="mensajes"></ul>
       </div>
     </aside>
   </div>
@@ -199,24 +246,42 @@
     DESCONECTADA:      { nombre: 'Desconectada',      color: 'var(--gris)' }
   };
 
-  let estaciones = [];
+  let datos = { estaciones: [], regiones: [], operaciones: [], operarios: [], mensajes: [], alertas: [] };
+  let estaciones = [];        // las de la provincia elegida
+  const abiertas = new Set(); // operaciones desplegadas (para que no se cierren al refrescar)
+
+  // provincia elegida, la recuerdo aunque se recargue la pagina
+  let regionActual = 'TODAS';
+  try { regionActual = localStorage.getItem('region') || 'TODAS'; } catch (e) {}
+  // tambien se puede abrir directamente en una provincia: /?region=MADRID
+  const regionUrl = new URLSearchParams(location.search).get('region');
+  if (regionUrl) regionActual = regionUrl.toUpperCase();
 
   // escapar el texto que viene de fuera (ubicaciones...) para que no se cuele html
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // nombre de provincia bonito: MADRID -> Madrid
+  function bonito(r) { return r.charAt(0) + r.slice(1).toLowerCase(); }
+
   // pedir el estado a la central cada segundo
   async function actualizar() {
     try {
       const r = await fetch('/api/estado');
-      const datos = await r.json();
-      estaciones = datos.estaciones;
+      datos = await r.json();
+      // solo las estaciones de la provincia elegida
+      estaciones = regionActual === 'TODAS' ? datos.estaciones : datos.estaciones.filter(ws => ws.region === regionActual);
       conexion(true);
+      pintarPestanas();
+      pintarInfoRegion();
       pintarResumen();
       pintarEstaciones();
       pintarSelector();
-      pintarMensajes(datos.mensajes);
+      pintarOperaciones();
+      pintarMensajes('actividad', datos.mensajes);
+      pintarMensajes('alertas', datos.alertas);
+      document.getElementById('numAlertas').textContent = datos.alertas.length ? datos.alertas.length + ' recientes' : '';
     } catch (e) {
       conexion(false);
     }
@@ -226,6 +291,40 @@
     document.getElementById('conexion').classList.toggle('caida', !ok);
     const hora = new Date().toLocaleTimeString('es-ES');
     document.getElementById('textoConexion').textContent = ok ? 'Conectado · ' + hora : 'Sin conexión con la central';
+  }
+
+  // una pestaña por provincia con cuantas estaciones tiene
+  function pintarPestanas() {
+    const cuenta = {};
+    for (const ws of datos.estaciones) cuenta[ws.region] = (cuenta[ws.region] || 0) + 1;
+    const pestanas = [{ nombre: 'TODAS', texto: 'Todas', n: datos.estaciones.length }]
+      .concat(datos.regiones.map(r => ({ nombre: r.nombre, texto: bonito(r.nombre), n: cuenta[r.nombre] || 0 })));
+    document.getElementById('pestanas').innerHTML = pestanas.map(p =>
+      '<button class="pestana' + (p.nombre === regionActual ? ' activa' : '') + '" onclick="elegirRegion(\'' + p.nombre + '\')">' +
+      esc(p.texto) + '<span>' + p.n + '</span></button>'
+    ).join('');
+  }
+
+  function elegirRegion(r) {
+    regionActual = r;
+    try { localStorage.setItem('region', r); } catch (e) {}
+    document.getElementById('ws').value = 'TODAS';
+    actualizar();
+  }
+
+  // explicar por donde van las ordenes de la provincia (un topic por provincia) y sus operarios
+  function pintarInfoRegion() {
+    const info = document.getElementById('infoRegion');
+    if (regionActual === 'TODAS') {
+      info.innerHTML = '<b>' + datos.regiones.length + ' provincias</b> · cada una tiene su propio topic de órdenes (' +
+        datos.regiones.map(r => '<code>' + esc(r.topic) + '</code>').join(' ') + ') y cada engine solo escucha el de su provincia.';
+      return;
+    }
+    const region = datos.regiones.find(r => r.nombre === regionActual);
+    const operarios = datos.operarios.filter(o => o.region === regionActual);
+    info.innerHTML = '<b>' + bonito(regionActual) + '</b> · ' + estaciones.length + ' estaciones · ' +
+      'las órdenes van por <code>' + esc(region ? region.topic : '') + '</code>' +
+      (operarios.length ? ' · operarios: ' + operarios.map(o => '<b>' + esc(o.id) + '</b> ' + esc(o.nombre)).join(', ') : '');
   }
 
   function pintarResumen() {
@@ -240,7 +339,8 @@
   function pintarEstaciones() {
     const cont = document.getElementById('estaciones');
     if (estaciones.length === 0) {
-      cont.innerHTML = '<div class="vacio">Todavía no hay ninguna estación registrada.<br>Arranca un Monitor (WM_WS_M) para darla de alta.</div>';
+      cont.innerHTML = '<div class="vacio">' + (regionActual === 'TODAS' ? 'Todavía no hay ninguna estación registrada.' : 'No hay estaciones en ' + bonito(regionActual) + '.') +
+        '<br>Arranca un Monitor (WM_WS_M) para darla de alta.</div>';
       return;
     }
     const elegida = document.getElementById('ws').value;
@@ -265,19 +365,20 @@
       }
       return '<div class="ws ' + ws.estado + (ws.id === elegida ? ' elegida' : '') + '" onclick="elegir(\'' + esc(ws.id) + '\')">' +
                '<div class="franja"><span>' + e.nombre + '</span><span>' + (ws.estado === 'REGANDO' ? '💧' : '') + '</span></div>' +
-               '<div class="cuerpo"><div class="id">' + esc(ws.id) + '</div><div class="ubicacion">📍 ' + esc(ws.ubicacion) + ' · ' + esc(ws.region) + '</div>' + cuerpo + '</div>' +
+               '<div class="cuerpo"><div class="id">' + esc(ws.id) + '</div><div class="ubicacion">📍 ' + esc(ws.ubicacion) + ' · ' + esc(bonito(ws.region)) + '</div>' + cuerpo + '</div>' +
              '</div>';
     }).join('');
   }
 
-  // rellenar el desplegable sin perder lo que habia elegido
+  // rellenar el desplegable con las estaciones de la provincia, sin perder lo que habia elegido
   function pintarSelector() {
     const sel = document.getElementById('ws');
     const elegida = sel.value;
     const ids = ['TODAS'].concat(estaciones.map(ws => ws.id));
     const iguales = sel.options.length === ids.length && [...sel.options].every((o, i) => o.value === ids[i]);
     if (!iguales) {
-      sel.innerHTML = ids.map(id => '<option value="' + esc(id) + '">' + (id === 'TODAS' ? 'Todas las estaciones' : esc(id)) + '</option>').join('');
+      const todas = regionActual === 'TODAS' ? 'Todas las estaciones' : 'Todas las de ' + bonito(regionActual);
+      sel.innerHTML = ids.map(id => '<option value="' + esc(id) + '">' + (id === 'TODAS' ? todas : esc(id)) + '</option>').join('');
       if (ids.includes(elegida)) sel.value = elegida;
     }
     pintarElegida();
@@ -287,8 +388,8 @@
     const id = document.getElementById('ws').value;
     const ws = estaciones.find(w => w.id === id);
     document.getElementById('elegidaInfo').innerHTML = ws
-      ? '<b>' + esc(ws.id) + '</b> · ' + esc(ws.ubicacion) + '<br>' + (ESTADOS[ws.estado]?.nombre || ws.estado)
-      : '<b>Todas las estaciones</b><br>' + estaciones.length + ' registradas';
+      ? '<b>' + esc(ws.id) + '</b> · ' + esc(ws.ubicacion) + ' · ' + esc(bonito(ws.region)) + '<br>' + (ESTADOS[ws.estado]?.nombre || ws.estado)
+      : '<b>' + (regionActual === 'TODAS' ? 'Todas las estaciones' : 'Todas las de ' + bonito(regionActual)) + '</b><br>' + estaciones.length + ' registradas';
   }
 
   // al hacer clic en una tarjeta se selecciona en el desplegable
@@ -299,39 +400,72 @@
   }
   document.getElementById('ws').addEventListener('change', () => { pintarEstaciones(); pintarElegida(); });
 
+  // operaciones de riego (de la provincia elegida), con sus pasos si estan abiertas
+  function pintarOperaciones() {
+    const regionDe = {};
+    for (const ws of datos.estaciones) regionDe[ws.id] = ws.region;
+    const ops = regionActual === 'TODAS' ? datos.operaciones : datos.operaciones.filter(op => regionDe[op.ws] === regionActual);
+    if (ops.length === 0) {
+      document.getElementById('operaciones').innerHTML = '<div class="vacio">Todavía no hay riegos. Pide uno desde un operario, una estación o el botón Iniciar riego.</div>';
+      return;
+    }
+    document.getElementById('operaciones').innerHTML = ops.map(op => {
+      // color de la etiqueta segun como va o como acabo
+      const clase = op.estado === 'EN CURSO' ? 'curso' : op.estado === 'TERMINADA' ? 'bien' : op.estado.startsWith('DENEGADA') ? 'mal' : 'cortada';
+      const pasos = abiertas.has(op.id)
+        ? '<ol>' + op.pasos.map(p => '<li><span class="hora">' + esc(p.slice(1, 9)) + '</span>' + esc(p.slice(11)) + '</li>').join('') + '</ol>'
+        : '';
+      return '<div class="op"><div class="cab" onclick="abrir(\'' + esc(op.id) + '\')">' +
+               '<b>' + esc(op.id) + '</b>' +
+               '<span class="datos-op">' + esc(op.ws) + ' · pedido por ' + esc(op.origen) + ' · ' + op.segundos + 's' +
+                 (op.telemetrias ? ' · ' + op.telemetrias + ' telemetrías · ' + op.volumen.toFixed(2) + ' L' : '') + '</span>' +
+               '<span class="etiqueta ' + clase + '">' + esc(op.estado) + '</span>' +
+             '</div>' + pasos + '</div>';
+    }).join('');
+  }
+
+  // abrir o cerrar los pasos de una operacion
+  function abrir(id) {
+    if (abiertas.has(id)) abiertas.delete(id); else abiertas.add(id);
+    pintarOperaciones();
+  }
+
   // color de cada mensaje segun lo que dice
   function colorMensaje(m) {
-    if (/FUGA|Denegado|Error|incorrect/i.test(m)) return 'rojo';
-    if (/FUERA_DE_SERVICIO|bloquea/i.test(m)) return 'naranja';
     if (/DESCONECTADA/.test(m)) return 'gris';
+    if (/FUGA|Denegado|Error|incorrect|rechazado/i.test(m)) return 'rojo';
+    if (/FUERA_DE_SERVICIO|bloquea/i.test(m)) return 'naranja';
     if (/REGANDO|regar|terminado/i.test(m)) return 'azul';
     if (/DISPONIBLE|activa|Nueva/i.test(m)) return 'verde';
     return '';
   }
 
-  function pintarMensajes(mensajes) {
-    document.getElementById('mensajes').innerHTML = mensajes.map(m => {
+  function pintarMensajes(donde, mensajes) {
+    document.getElementById(donde).innerHTML = mensajes.map(m => {
       const hora = m.slice(1, 9);       // "[14:28:37] texto" -> "14:28:37"
       const texto = m.slice(11);
       return '<li class="' + colorMensaje(texto) + '"><span class="hora">' + esc(hora) + '</span>' + esc(texto) + '</li>';
-    }).join('') || '<li>Sin mensajes todavía</li>';
+    }).join('') || '<li>' + (donde === 'alertas' ? 'Sin alertas, todo bien' : 'Sin mensajes todavía') + '</li>';
   }
 
   async function orden(accion) {
     const ws = document.getElementById('ws').value;
     const segundos = document.getElementById('segundos').value;
-    if (ws === 'TODAS' && accion === 'bloquear' && !confirm('¿Bloquear TODAS las estaciones?')) return;
+    const cuales = regionActual === 'TODAS' ? 'TODAS las estaciones' : 'todas las estaciones de ' + bonito(regionActual);
+    if (ws === 'TODAS' && accion === 'bloquear' && !confirm('¿Bloquear ' + cuales + '?')) return;
     // dar de baja borra la estacion de la central: preguntar antes (solo se puede si esta desconectada)
     if (accion === 'baja' && !confirm(ws === 'TODAS'
-          ? '¿Dar de baja TODAS las estaciones desconectadas?'
+          ? '¿Dar de baja ' + cuales + ' que estén desconectadas?'
           : '¿Dar de baja ' + ws + '? Solo se puede si está desconectada.')) return;
 
     try {
-      const url = '/api/orden?accion=' + accion + '&ws=' + encodeURIComponent(ws) + '&segundos=' + encodeURIComponent(segundos);
+      // con TODAS mando tambien la provincia, asi la orden solo va a las de esa provincia
+      const url = '/api/orden?accion=' + accion + '&ws=' + encodeURIComponent(ws) +
+                  '&segundos=' + encodeURIComponent(segundos) + '&region=' + encodeURIComponent(regionActual);
       const r = await fetch(url, { method: 'POST' });
       const texto = await r.text();
       const nombres = { riego: 'Riego solicitado', bloquear: 'Bloqueo enviado', activar: 'Activación enviada', baja: 'Estación dada de baja' };
-      aviso(r.ok ? nombres[accion] + ' · ' + (ws === 'TODAS' ? 'todas las estaciones' : ws) : texto, !r.ok);
+      aviso(r.ok ? nombres[accion] + ' · ' + (ws === 'TODAS' ? cuales : ws) : texto, !r.ok);
     } catch (e) {
       aviso('No se ha podido contactar con la central', true);
     }
