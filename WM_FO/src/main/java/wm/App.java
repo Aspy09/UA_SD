@@ -31,6 +31,7 @@ public class App {
             lineas = Files.readAllLines(Path.of(ruta), StandardCharsets.ISO_8859_1);
         } catch (IOException e) {
             System.out.println("No se puede leer el fichero " + ruta + ": " + e.getMessage());
+            KafkaFO.error(idFO, "no puedo leer el fichero " + ruta);
             return;
         }
 
@@ -44,6 +45,7 @@ public class App {
             String[] c = linea.split("#");
             if (c.length != 2) {
                 System.out.println("Linea " + n + " ignorada (formato ID#segundos): " + linea);
+                KafkaFO.error(idFO, "linea " + n + " del fichero mal escrita: " + linea);
                 continue;
             }
             String idWS = c[0].trim().toUpperCase();
@@ -166,6 +168,7 @@ public class App {
     static boolean pedirRiego(String idWS, String textoSegundos) {
         if (idWS.isEmpty() || idWS.contains("#")) {
             System.out.println("Estacion no valida: '" + idWS + "'");
+            KafkaFO.error(idFO, "estacion no valida '" + idWS + "'");
             return false;
         }
         try {
@@ -175,6 +178,7 @@ public class App {
             return true;
         } catch (NumberFormatException e) {
             System.out.println("Segundos no validos: '" + textoSegundos + "'");
+            KafkaFO.error(idFO, "segundos no validos '" + textoSegundos + "' para " + idWS);
             return false;
         }
     }
