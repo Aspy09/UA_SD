@@ -50,26 +50,28 @@ lanzar_engine() {
         engine "$KAFKA" "mon-$(nombre "$1"):8001" < /dev/null > /dev/null
 }
 
-# conectarse al menu del engine de una estacion que ya esta en marcha
+# escribir una linea en el teclado del engine: se mete directamente en la entrada de java (proceso 1)
+escribir() { printf '%s\n' "$2" | docker exec -i "eng-$(nombre "$1")" sh -c 'cat > /proc/1/fd/0'; }
+
+# usar el menu del engine de una estacion que ya esta en marcha
+# (sin docker attach: al desconectarse docker le cierra la entrada al engine y la siguiente vez el menu ya no va)
 abrir_menu() {
     echo "Menu de $1 (opcion 5 para salir, la estacion sigue funcionando)"
+    FIN=""
+    trap 'FIN=1' USR1
 
-    # conectarse al engine (--sig-proxy=false: nada de lo que pase aqui le llega como señal)
-    coproc ENGINE { exec docker attach --sig-proxy=false "eng-$(nombre "$1")" 2>&1; }
-    CONEXION=$ENGINE_PID
-    disown "$CONEXION" 2>/dev/null           # que bash no escriba "Killed" al cortarla
-    exec 3<&"${ENGINE[0]}" 4>&"${ENGINE[1]}"   # copiar la conexion a fd 3 (leer) y 4 (escribir)
+    # lo que escribe el engine sale por pantalla; cuando dice que se sale del menu, se avisa al script
+    docker logs -f --tail 0 "eng-$(nombre "$1")" 2>&1 | tee /dev/tty | { grep -q "Has salido del menu" && kill -USR1 $$; } &
+    sleep 1
+    escribir "$1" ""   # Enter para que muestre el menu
 
-    # lo que escribe el engine sale por pantalla; cuando dice que se sale del menu, cortar la conexion
-    # (kill -9 porque con --sig-proxy=false docker attach no hace caso al kill normal)
-    ( tee /dev/tty <&3 | { grep -q "Has salido del menu" && kill -9 "$CONEXION" 2>/dev/null; } ) &
-
-    # lo que escribes tu le llega al engine (Enter al principio para que muestre el menu)
-    printf '\n' >&4
-    while kill -0 "$CONEXION" 2>/dev/null; do
-        if IFS= read -r -t 1 LINEA; then printf '%s\n' "$LINEA" >&4 2>/dev/null; fi
+    # lo que escribes tu le llega al engine
+    while [ -z "$FIN" ] && engine_en_marcha "$1"; do
+        if IFS= read -r -t 1 LINEA; then escribir "$1" "$LINEA"; fi
     done
-    exec 3<&- 4>&-
+    # parar el docker logs de esta estacion
+    pkill -f "docker logs -f --tail 0 eng-$(nombre "$1")" 2>/dev/null
+    trap - USR1
     echo
 }
 
