@@ -37,6 +37,21 @@ public class App
             KafkaCentral.iniciar(brokerKafka);
             Estaciones.publicarTodas(); // para que los fo vean las estaciones desde el principio
             new ConsumidorKafka().start();
+
+            // cada 5 s mirar si hay riegos reservados que la estacion no ha confirmado (si su engine
+            // no contesta la estacion se quedaria reservada para siempre)
+            Thread vigilante = new Thread(() -> {
+                while (true) {
+                    try {
+                        Thread.sleep(5000);
+                        Riegos.revisarReservas();
+                    } catch (Exception e) {
+                        // si falla una vuelta se sigue con la siguiente
+                    }
+                }
+            });
+            vigilante.setDaemon(true); // no impide que la central se cierre
+            vigilante.start();
             System.out.println("Conectada a kafka en " + brokerKafka);
         } catch (Exception e) {
             System.out.println("Error al conectar con kafka: " + e.toString());

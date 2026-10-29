@@ -11,6 +11,7 @@ public class Estacion {
     // datos del riego para el panel
     private String operario; // quien pidio el riego, null si esta libre
     private String operacion; // numero del riego que esta haciendo (OP-0007), para la trazabilidad
+    private long reservadaDesde = 0; // cuando se reservo (ms), para cancelarla si la estacion no contesta
     private double caudal;   // litros por minuto
     private double volumen;  // litros que lleva
 
@@ -28,6 +29,7 @@ public class Estacion {
     public boolean isBloqueada() { return bloqueada; }
     public String getOperario() { return operario; }
     public String getOperacion() { return operacion; }
+    public long getReservadaDesde() { return reservadaDesde; }
     public double getCaudal() { return caudal; }
     public double getVolumen() { return volumen; }
 
@@ -37,6 +39,7 @@ public class Estacion {
     public void setBloqueada(boolean bloqueada) { this.bloqueada = bloqueada; }
     public void setOperario(String operario) { this.operario = operario; }
     public void setOperacion(String operacion) { this.operacion = operacion; }
+    public void setReservadaDesde(long reservadaDesde) { this.reservadaDesde = reservadaDesde; }
     public void setCaudal(double caudal) { this.caudal = caudal; }
     public void setVolumen(double volumen) { this.volumen = volumen; }
 

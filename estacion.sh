@@ -14,8 +14,13 @@
 # Por defecto usa la Central y el Kafka del docker compose local. Para usar otros (ej. Railway):
 #   CENTRAL=host:puerto KAFKA=host:puerto ./estacion.sh todas
 
+# si solo se ha puesto una de las dos direcciones, seguro que falta la otra: no lanzo nada
+# (pasaba que los monitores iban a railway y los engines al kafka local y los riegos no llegaban)
+if [ -n "$CENTRAL" ] && [ -z "$KAFKA" ]; then echo "Falta export KAFKA=... (has puesto CENTRAL pero no KAFKA)"; exit 1; fi
+if [ -z "$CENTRAL" ] && [ -n "$KAFKA" ]; then echo "Falta export CENTRAL=... (has puesto KAFKA pero no CENTRAL)"; exit 1; fi
 CENTRAL="${CENTRAL:-central:9000}"
 KAFKA="${KAFKA:-kafka:19092}"
+[ "$1" != "parar" ] && echo "Usando CENTRAL=$CENTRAL  KAFKA=$KAFKA"
 cd "$(dirname "$0")" || exit 1          # docker compose se ejecuta en la raiz del repo
 FICHERO="WM_WS/estaciones.txt"
 
