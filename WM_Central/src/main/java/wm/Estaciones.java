@@ -61,6 +61,7 @@ public class Estaciones {
         // si estaba regando hay que parar el riego
         if (ws.getEstado() == EstadoWS.REGANDO) {
             KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
+            Operaciones.paso(ws.getOperacion(), "PARAR enviado: fuga en la estacion mientras regaba");
         }
         cambiarEstado(ws, EstadoWS.FUGA);
     }
@@ -94,6 +95,7 @@ public class Estaciones {
         guardar(ws);
         // el engine para el riego si estaba regando
         KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "BLOQUEAR#" + id);
+        if (ws.getEstado() == EstadoWS.REGANDO) Operaciones.paso(ws.getOperacion(), "BLOQUEAR enviado: la central bloquea la estacion");
         // si tiene fuga o esta desconectada se queda asi, al volver ya saldra fuera de servicio
         if (ws.getEstado() == EstadoWS.DISPONIBLE || ws.getEstado() == EstadoWS.REGANDO) {
             cambiarEstado(ws, EstadoWS.FUERA_DE_SERVICIO);
@@ -131,12 +133,14 @@ public class Estaciones {
     // riegos
 
     // reservar la ws para un riego, devuelve null si se puede o el motivo si no
-    public static synchronized String reservar(String id, String origen) {
+    // op = numero de la operacion de riego, se guarda en la estacion para seguir sus pasos
+    public static synchronized String reservar(String id, String origen, String op) {
         Estacion ws = estaciones.get(id);
         if (ws == null) return "NO_EXISTE";
         if (ws.getOperario() != null) return "OCUPADA"; // ya la tiene otro
         if (ws.getEstado() != EstadoWS.DISPONIBLE) return ws.getEstado().toString();
         ws.setOperario(origen);
+        ws.setOperacion(op);
         return null;
     }
 
@@ -148,6 +152,7 @@ public class Estaciones {
         // si mientras tanto se ha averiado o bloqueado que pare
         if (ws.getEstado() != EstadoWS.DISPONIBLE) {
             KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
+            Operaciones.paso(ws.getOperacion(), "PARAR enviado: la estacion ya no esta disponible");
             return ws.getOperario();
         }
         ws.setCaudal(0);
@@ -171,6 +176,7 @@ public class Estaciones {
         if (ws == null || ws.getOperario() == null) return null;
         String operario = ws.getOperario();
         ws.setOperario(null);
+        ws.setOperacion(null);
         ws.setCaudal(0);
 
         // si estaba regando vuelve a disponible, si tiene fuga o esta desconectada se queda igual
@@ -178,6 +184,12 @@ public class Estaciones {
             cambiarEstado(ws, ws.isBloqueada() ? EstadoWS.FUERA_DE_SERVICIO : EstadoWS.DISPONIBLE);
         }
         return operario;
+    }
+
+    // numero de la operacion de riego que tiene la estacion (null si ninguna)
+    public static synchronized String operacion(String id) {
+        Estacion ws = estaciones.get(id);
+        return ws == null ? null : ws.getOperacion();
     }
 
     // provincia de una estacion (para saber a que topic mandarle las ordenes)

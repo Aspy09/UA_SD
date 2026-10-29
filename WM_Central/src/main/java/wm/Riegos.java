@@ -58,7 +58,7 @@ public class Riegos {
         }
 
         //2.mirar que la ws esta disponible y reservarla
-        String motivo = Estaciones.reservar(idWS, origen);
+        String motivo = Estaciones.reservar(idWS, origen, null);
         if (motivo != null) {
             denegar(origen, idWS, motivo);
             return;
