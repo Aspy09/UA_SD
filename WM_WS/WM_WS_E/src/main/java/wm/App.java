@@ -103,7 +103,8 @@ public class App {
     static void mostrarMenu() {
         System.out.println();
         System.out.println("1) Pedir riego  2) Parar riego  3) Simular/resolver averia  4) Ver estado  5) Salir del menu");
-        System.out.print("Opcion: ");
+        // println y no print: estacion.sh enseña el menu con docker logs, que no saca una linea hasta que acaba
+        System.out.println("Opcion:");
     }
 
     // Pedir riego desde la propia estacion: origen = el id de la estacion
@@ -113,7 +114,7 @@ public class App {
             System.out.println("Aun no estamos conectados al Monitor");
             return;
         }
-        System.out.print("Segundos de riego: ");
+        System.out.println("Segundos de riego:");
         if (!sc.hasNextLine()) return;
         try {
             int segundos = Integer.parseInt(sc.nextLine().trim());
