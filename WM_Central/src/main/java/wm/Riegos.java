@@ -128,6 +128,16 @@ public class Riegos {
         Operaciones.terminar(op, bien ? "TERMINADA" : "CORTADA (" + motivo + ")");
     }
 
+    // si una estacion no confirma el riego en 15 s se cancela (si no se quedaria reservada para siempre)
+    // lo llama cada 5 s un hilo de la central
+    public static void revisarReservas() {
+        for (String[] r : Estaciones.cancelarReservasSinRespuesta(15000)) {
+            String idWS = r[0], origen = r[1], op = r[2];
+            Operaciones.paso(op, idWS + " no ha contestado en 15 s, se cancela la reserva");
+            denegar(op, origen, idWS, "SIN_RESPUESTA");
+        }
+    }
+
     private static void denegar(String op, String origen, String idWS, String motivo) {
         Mensajes.alerta(op + " Denegado " + idWS + " a " + origen + ": " + motivo);
         notificar(origen, "DENEGADO#" + origen + "#" + idWS + "#" + motivo);
