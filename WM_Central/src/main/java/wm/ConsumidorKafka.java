@@ -38,8 +38,8 @@ public class ConsumidorKafka extends Thread {
                 }
             }));
 
-            //2.escuchar los dos topics
-            consumidor.subscribe(List.of(KafkaCentral.SOLICITUDES, KafkaCentral.TELEMETRIA));
+            //2.escuchar las solicitudes, la telemetria y los errores de los otros modulos
+            consumidor.subscribe(List.of(KafkaCentral.SOLICITUDES, KafkaCentral.TELEMETRIA, KafkaCentral.ERRORES));
 
             //3.pedir mensajes nuevos todo el rato (si no hay espera 1s)
             while (true) {

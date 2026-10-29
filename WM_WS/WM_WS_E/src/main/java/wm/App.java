@@ -7,6 +7,7 @@ import java.util.Scanner;
 
 public class App {
     private static String idWS = null; // lo dice el monitor al conectar
+    private static boolean errorMonitorAvisado = false; // para no mandar el mismo error cada 3s mientras reintenta
     private static boolean menuIniciado = false;
 
 
@@ -44,6 +45,7 @@ public class App {
             System.out.println("Conectado al Monitor. Soy la estacion " + idWS + " (" + region + ")");
 
             KafkaEngine.escucharOrdenes(idWS, region); // empezar a leer las ordenes de su provincia
+            errorMonitorAvisado = false; // conectado otra vez, si se vuelve a perder se avisa
             // Responder a cada comprobacion de salud
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {
@@ -52,10 +54,19 @@ public class App {
                 }
             }
             System.out.println("El Monitor cerro la conexion");
+            avisarErrorMonitor("el monitor ha cerrado la conexion");
 
         } catch (IOException e) {
             System.out.println("Monitor no disponible (" + e.getMessage() + ")");
+            avisarErrorMonitor("no puedo conectar con el monitor (" + e.getMessage() + ")");
         }
+    }
+
+    // avisar a la central (solo si ya sabemos quien somos y una vez hasta que se reconecte)
+    private static void avisarErrorMonitor(String texto) {
+        if (idWS == null || errorMonitorAvisado) return;
+        KafkaEngine.error(idWS, texto);
+        errorMonitorAvisado = true;
     }
 
     // Menu de la estacion

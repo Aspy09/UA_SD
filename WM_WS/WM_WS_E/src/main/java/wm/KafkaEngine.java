@@ -16,6 +16,7 @@ public class KafkaEngine {
         return "wm.ordenes." + region;
     }
     public static final String TELEMETRIA = "wm.telemetria";
+    public static final String ERRORES = "wm.errores"; // los errores se los mando a la central
     private static boolean escuchando = false;
     private static String broker;
     private static KafkaProducer<String, String> productor;
@@ -38,7 +39,12 @@ public class KafkaEngine {
         productor.send(new ProducerRecord<>(topic, idWS, mensaje));
         System.out.println("[KAFKA] -> " + topic + ": " + mensaje);
     }
-        // arranca el hilo que lee las ordenes (solo una vez, aunque reconectemos con el monitor)
+        // mandar un error a la central para que lo vea en sus alertas: ERROR#quien#texto
+    public static void error(String idWS, String texto) {
+        enviar(ERRORES, idWS, "ERROR#" + idWS + "#" + texto);
+    }
+
+    // arranca el hilo que lee las ordenes (solo una vez, aunque reconectemos con el monitor)
     public static synchronized void escucharOrdenes(String idWS, String region) {
         if (escuchando) return;
         escuchando = true;
