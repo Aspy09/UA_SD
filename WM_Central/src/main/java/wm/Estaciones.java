@@ -20,7 +20,9 @@ public class Estaciones {
     // cambiar el estado y avisar a los fo por wm.estaciones
     private static void cambiarEstado(Estacion ws, EstadoWS nuevo) {
         ws.setEstado(nuevo);
-        Mensajes.add(ws.toString());
+        // fuga y desconexion van a alertas, lo demas a actividad
+        if (nuevo == EstadoWS.FUGA || nuevo == EstadoWS.DESCONECTADA) Mensajes.alerta(ws.toString());
+        else Mensajes.add(ws.toString());
         publicar(ws);
     }
 
@@ -78,7 +80,7 @@ public class Estaciones {
         try {
             BaseDatos.guardarEstacion(ws);
         } catch (SQLException e) {
-            Mensajes.add("Error guardando " + ws.getId() + " en la bd: " + e.getMessage());
+            Mensajes.alerta("Error guardando " + ws.getId() + " en la bd: " + e.getMessage());
         }
     }
 

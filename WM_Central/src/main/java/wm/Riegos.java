@@ -14,7 +14,7 @@ public class Riegos {
             if (c[0].equals("RIEGO") && c.length == 4) {
                 solicitarRiego(c[1], c[2], Integer.parseInt(c[3]));
             } else {
-                Mensajes.add("Solicitud con formato incorrecto: " + mensaje);
+                Mensajes.alerta("Solicitud con formato incorrecto: " + mensaje);
             }
             return;
         }
@@ -35,7 +35,7 @@ public class Riegos {
                 finRiego(idWS, c[2], c[3], c[4]);
                 break;
             default:
-                Mensajes.add("Telemetria desconocida: " + mensaje);
+                Mensajes.alerta("Telemetria desconocida: " + mensaje);
         }
     }
 
@@ -79,7 +79,7 @@ public class Riegos {
     private static void riegoRechazado(String idWS, String motivo) {
         String origen = Estaciones.terminarRiego(idWS);
         if (origen == null) return;
-        Mensajes.add(idWS + " ha rechazado el riego: " + motivo);
+        Mensajes.alerta(idWS + " ha rechazado el riego: " + motivo);
         denegar(origen, idWS, "RECHAZADO");
     }
 
@@ -98,7 +98,7 @@ public class Riegos {
     }
 
     private static void denegar(String origen, String idWS, String motivo) {
-        Mensajes.add("Denegado " + idWS + " a " + origen + ": " + motivo);
+        Mensajes.alerta("Denegado " + idWS + " a " + origen + ": " + motivo);
         notificar(origen, "DENEGADO#" + origen + "#" + idWS + "#" + motivo);
     }
 
