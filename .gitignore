@@ -3,4 +3,3 @@ target/
 *.db
 .vscode/
 ClientePrueba.java
-pruebas/logs/

@@ -6,6 +6,7 @@ public class Estacion {
     private static String idWS;
     private static boolean averia = false;
     private static boolean bloqueada = false;
+    private static boolean sinMonitor = false; // se ha perdido la conexion con el monitor: averiada
     private static Riego riegoActual = null; // null = no esta regando
 
     public static synchronized void setId(String id) {
@@ -43,6 +44,7 @@ public class Estacion {
         // comprobar si podemos regar
         String motivo = null;
         if (averia) motivo = "FUGA";
+        else if (sinMonitor) motivo = "AVERIADA";
         else if (bloqueada) motivo = "FUERA_DE_SERVICIO";
         else if (riegoActual != null) motivo = "OCUPADA";
 
@@ -67,6 +69,23 @@ public class Estacion {
         if (hay) pararRiego("AVERIA");
     }
 
+    // la llama App al perder o recuperar el monitor. sin monitor la central no sabe nada de nosotros,
+    // asi que se corta el riego (el FIN llega a la central por kafka) y no se riega hasta que vuelva
+    public static synchronized void setSinMonitor(boolean caido) {
+        if (caido == sinMonitor) return; // solo avisar cuando cambia
+        sinMonitor = caido;
+        if (caido) {
+            System.out.println(">> Sin conexion con el monitor: estacion AVERIADA");
+            pararRiego("MONITOR");
+        } else {
+            System.out.println(">> Monitor recuperado: estacion operativa");
+        }
+    }
+
+    public static synchronized boolean isSinMonitor() {
+        return sinMonitor;
+    }
+
     // la llama el hilo del riego justo antes de terminar
     public static synchronized void riegoTerminado(Riego r) {
         if (riegoActual == r) riegoActual = null;
@@ -88,6 +107,7 @@ public class Estacion {
         String estado = (riegoActual != null) ? "REGANDO" : "EN REPOSO";
         return idWS + " -> " + estado
                 + (averia ? ", CON AVERIA" : "")
-                + (bloqueada ? ", BLOQUEADA" : "");
+                + (bloqueada ? ", BLOQUEADA" : "")
+                + (sinMonitor ? ", AVERIADA (sin monitor)" : "");
     }
 }

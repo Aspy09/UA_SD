@@ -43,6 +43,7 @@ public class App {
             Estacion.setId(idWS);
 
             System.out.println("Conectado al Monitor. Soy la estacion " + idWS + " (" + region + ")");
+            Estacion.setSinMonitor(false);
 
             KafkaEngine.escucharOrdenes(idWS, region); // empezar a leer las ordenes de su provincia
             errorMonitorAvisado = false; // conectado otra vez, si se vuelve a perder se avisa
@@ -54,10 +55,12 @@ public class App {
                 }
             }
             System.out.println("El Monitor cerro la conexion");
+            Estacion.setSinMonitor(true);
             avisarErrorMonitor("el monitor ha cerrado la conexion");
 
         } catch (IOException e) {
             System.out.println("Monitor no disponible (" + e.getMessage() + ")");
+            Estacion.setSinMonitor(true);
             avisarErrorMonitor("no puedo conectar con el monitor (" + e.getMessage() + ")");
         }
     }
@@ -112,6 +115,10 @@ public class App {
         String id = Estacion.getId();
         if (id == null) {
             System.out.println("Aun no estamos conectados al Monitor");
+            return;
+        }
+        if (Estacion.isSinMonitor()) {
+            System.out.println("Estacion AVERIADA (sin conexion con el monitor): no se puede regar");
             return;
         }
         System.out.println("Segundos de riego:");

@@ -1,5 +1,6 @@
 package wm;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +20,9 @@ public class App {
     // el consumidor deja aca el id de la estacion cuando una peticion termina (RESUMEN o DENEGADO)
     private static final BlockingQueue<String> finalizados = new LinkedBlockingQueue<>();
     private static volatile boolean enFichero = false; // mientras corre el fichero no se meustra el menu
+
+    // peticiones sin terminar: id_ws -> ultima vez que la central dijo algo de ella
+    private static final Map<String, Long> pendientes = new ConcurrentHashMap<>();
 
     // id_ws -> "ubicacion: ESTADO", ordenado por id y seguro entre hilos
     private static final Map<String, String> estaciones = new ConcurrentSkipListMap<>();
@@ -123,6 +127,26 @@ public class App {
             return;
         }
 
+        // si la central se calla mas de 25 s con una peticion en marcha, avisar (25 s porque
+        // la central tarda hasta 20 s en cancelar una reserva que la estacion no confirma)
+        Thread vigilante = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                long ahora = System.currentTimeMillis();
+                for (Map.Entry<String, Long> p : pendientes.entrySet()) {
+                    if (ahora - p.getValue() > 25000 && pendientes.remove(p.getKey()) != null) {
+                        System.out.println("[" + p.getKey() + "] Imposible conectar con WM_Central (no contesta)");
+                    }
+                }
+            }
+        });
+        vigilante.setDaemon(true);
+        vigilante.start();
+
         // 4) Menu (hilo principal)
         // Opcional: java -jar WM_FO.jar <broker> <id_operario> <fichero> lanza el fichero al arrancar
         if (args.length >= 3) lanzarFichero(args[2]);
@@ -183,6 +207,7 @@ public class App {
             int segundos = Integer.parseInt(textoSegundos);
             if (segundos <= 0) throw new NumberFormatException();
             KafkaFO.solicitarRiego(idFO, idWS, segundos);
+            pendientes.put(idWS, System.currentTimeMillis());
             return true;
         } catch (NumberFormatException e) {
             System.out.println("Segundos no validos: '" + textoSegundos + "'");
@@ -212,6 +237,9 @@ public class App {
         if (!c[1].equals(idFO)) return;
 
         String ws = "[" + c[2] + "] ";
+        // la central ha contestado: si acaba (DENEGADO o RESUMEN) ya no hay que esperar
+        if (c[0].equals("DENEGADO") || c[0].equals("RESUMEN")) pendientes.remove(c[2]);
+        else pendientes.put(c[2], System.currentTimeMillis());
         switch (c[0]) {
             case "INFO":       // INFO#fo#ws#texto
                 System.out.println(ws + c[3]);

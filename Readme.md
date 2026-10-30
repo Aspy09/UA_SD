@@ -171,6 +171,11 @@ Las órdenes a una o todas las WS (regar, bloquear, activar, dar de baja) se pue
 ### Operarios
 Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt` (`FO-01#nombre#provincia`, 3 por provincia). La CENTRAL los da de alta en la BD al arrancar. Un operario solo ve y solo puede regar las estaciones de su provincia (`operario.sh` le pasa la provincia en la variable `REGION`; aunque no la tenga, la CENTRAL lo comprueba y deniega con `OTRA_PROVINCIA`). Para salir: opción 3 del menú del operario y opción 5 del menú de la estación (la estación sigue funcionando).
 
+### Resiliencia
+- Si cae el **Monitor** durante un riego, el Engine corta el riego (`FIN#...#MONITOR`, la CENTRAL lo marca `CORTADA (MONITOR)` y el FO recibe su RESUMEN) y se queda averiado sin dejar regar hasta que el Monitor vuelva.
+- Si un **FO** se cierra durante un riego, el riego sigue. Al volver, Kafka le da los avisos desde donde lo dejó (su grupo guarda el offset), así que ve el resultado.
+- Si la **CENTRAL** no contesta a una petición en 25 s, el FO muestra `Imposible conectar con WM_Central`.
+
 ## 6. Ejemplo completo: un riego pedido por un operario
 
 ```
