@@ -14,6 +14,9 @@ public class HiloCliente extends Thread {
     public void run() {
         try {
             Protocolo protocolo = new Protocolo(skCliente);
+            // el monitor manda un mensaje de vida cada segundo: si en 5s no llega nada
+            // (se ha caido o se ha cortado la red) la lectura salta y la ws pasa a DESCONECTADA
+            skCliente.setSoTimeout(5000);
 
             // 1. Saludo inicial: el Monitor manda ENQ y le contestamos ACK
             if (!protocolo.esperarENQ()) {
@@ -25,12 +28,15 @@ public class HiloCliente extends Thread {
             // 2. Conexion persistente: atender peticiones hasta que el Monitor se vaya
             String mensaje;
             while ((mensaje = protocolo.recibirTrama()) != null) {
-                System.out.println("Recibido: " + mensaje);
+                // los mensajes de vida llegan cada segundo de cada estacion, no se escriben
+                if (!mensaje.startsWith("VIDA#")) System.out.println("Recibido: " + mensaje);
                 String respuesta = procesar(mensaje.split("#"));
 
                 // Si tras los reintentos no llega la respuesta, damos la conexion por perdida
                 if (!protocolo.enviarTrama(respuesta)) break;
             }
+        } catch (SocketTimeoutException e) {
+            Mensajes.alerta((idWS != null ? idWS : "Un monitor") + " lleva 5 s sin mandar mensajes de vida");
         } catch (Exception e) {
             System.out.println("Error: " + e.toString());
         }
@@ -66,6 +72,8 @@ public class HiloCliente extends Thread {
         if (campos.length < 2 || !campos[1].equals(idWS)) return "KO#" + idWS + "#ID_INCORRECTO";
 
         switch (codigo) {
+            case "VIDA": // mensaje de vida, solo hay que contestar
+                return "OK#" + idWS;
             case "AVERIA":
                 Estaciones.averia(idWS);
                 return "OK#" + idWS;

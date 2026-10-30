@@ -78,8 +78,9 @@ Argumentos del Monitor: `<puerto_para_engine> <ip_central:puerto> <id_ws> <ubica
 | | `KO#<id_ws>#<motivo>` | Ej. `KO#WS-01#YA_CONECTADA` si ya hay otro Monitor con ese ID. El Monitor termina. |
 | `AVERIA#<id_ws>` | `OK#<id_ws>` | Marca `FUGA`. Si estaba regando, ordena `PARAR`. |
 | `RESUELTO#<id_ws>` | `OK#<id_ws>` | Marca `DISPONIBLE`. |
+| `VIDA#<id_ws>` | `OK#<id_ws>` | Mensaje de vida: el Monitor lo manda cada segundo (si no ha mandado otra cosa). |
 
-Desconexión (socket cerrado) → CENTRAL marca la WS como `DESCONECTADA`.
+Desconexión → CENTRAL marca la WS como `DESCONECTADA` si se cierra el socket o si pasan **5 s sin recibir ningún mensaje** del Monitor (así se detecta también un corte de red).
 
 ---
 

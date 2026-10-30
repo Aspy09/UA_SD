@@ -15,6 +15,7 @@ public class App {
     private static String ubicacion;
     private static String region; // provincia de la estacion, el engine solo recibe las ordenes de su provincia
     private static long ultimoIntento = 0; // para no reintentar mas de una vez cada 5s
+    private static long ultimaVida = 0;    // ultimo mensaje de vida a central (uno por segundo)
 
     // enAveria = lo que le pasa al engine
     // averiaAvisada = lo que cree central
@@ -108,6 +109,16 @@ public class App {
         }
     }
 
+    // Mensaje de vida: si central pasa 5s sin recibir nada nuestro nos da por desconectados
+    // (asi tambien se detecta si se corta la red sin que se cierre el socket)
+    private static boolean enviarVida() {
+        try {
+            return central.enviarTrama("VIDA#" + idWS) && central.recibirTrama() != null;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     // Se llama una vez por segundo. Comprueba la conexion, reconecta si hace falta
     // y avisa a central si el estado de averia ccambió. Nunca lanza excepciones.
     private static void mantenerCentral() {
@@ -130,6 +141,14 @@ public class App {
                 averiaAvisada = enAveria;
             } else {
                 System.out.println("No se pudo avisar a CENTRAL de " + mensaje);
+                cerrarCentral();
+            }
+        }
+        // 4) Si no hemos mandado nada, mensaje de vida (como mucho uno por segundo)
+        else if (System.currentTimeMillis() - ultimaVida >= 1000) {
+            ultimaVida = System.currentTimeMillis();
+            if (!enviarVida()) {
+                System.out.println("No se pudo mandar el mensaje de vida a CENTRAL");
                 cerrarCentral();
             }
         }
