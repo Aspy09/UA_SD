@@ -147,6 +147,7 @@ Como **key** de cada mensaje se pone el ID de la WS (o del FO en `wm.notificacio
 | `AUTORIZADO#<id_fo>#<id_ws>` | La WS ha confirmado `INICIADO`. |
 | `DENEGADO#<id_fo>#<id_ws>#<motivo>` | Motivo: `NO_EXISTE`, `DESCONECTADA`, `FUGA`, `FUERA_DE_SERVICIO`, `OCUPADA`, `RECHAZADO`, `OPERARIO_NO_EXISTE`, `ERROR_BD`, `OTRA_PROVINCIA` (el operario pide una estación que no es de su provincia), `SIN_RESPUESTA` (la estación no confirmó el riego en 15 s: se cancela la reserva). |
 | `RIEGO#<id_fo>#<id_ws>#<caudal>#<volumen>` | Reenvío de la telemetría solo al FO que pidió el riego. |
+| `AVERIA#<id_fo>#<id_ws>` | La WS se ha averiado durante el riego. El RESUMEN llega cuando la WS lo cierre (si el Engine se ha caído, al volver). |
 | `RESUMEN#<id_fo>#<id_ws>#<volumen_total>#<duracion_s>#<motivo>` | Al terminar. Tras esto el FO espera 4 s y pide el siguiente servicio del fichero. |
 
 ### `wm.estaciones` (CENTRAL → todos los FO)
@@ -173,6 +174,7 @@ Los operarios que existen están en `WM_Central/src/main/resources/operarios.txt
 
 ### Resiliencia
 - Si cae el **Monitor** durante un riego, el Engine corta el riego (`FIN#...#MONITOR`, la CENTRAL lo marca `CORTADA (MONITOR)` y el FO recibe su RESUMEN) y se queda averiado sin dejar regar hasta que el Monitor vuelva.
+- Si cae el **Engine** durante un riego, el Monitor avisa de la avería a la CENTRAL y esta manda `AVERIA` al FO. El Engine apunta cada segundo el riego en marcha en `datos/riego_<id>.txt` (en docker es el volumen `wm-riegos`); al volver encuentra el fichero y manda `FIN#...#CAIDA_ENGINE` con lo que se había regado, así el FO recibe su RESUMEN.
 - Si un **FO** se cierra durante un riego, el riego sigue. Al volver, Kafka le da los avisos desde donde lo dejó (su grupo guarda el offset), así que ve el resultado.
 - Si la **CENTRAL** no contesta a una petición en 25 s, el FO muestra `Imposible conectar con WM_Central`.
 
