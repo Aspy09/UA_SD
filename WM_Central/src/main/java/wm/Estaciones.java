@@ -65,6 +65,10 @@ public class Estaciones {
         if (ws.getEstado() == EstadoWS.REGANDO) {
             KafkaCentral.enviar(KafkaCentral.ordenes(ws.getRegion()), id, "PARAR#" + id);
             Operaciones.paso(ws.getOperacion(), "PARAR enviado: fuga en la estacion mientras regaba");
+            // avisar a quien pidio el riego. la operacion sigue abierta hasta que llegue el FIN
+            // (si el engine se ha caido, lo manda al volver con lo que habia regado)
+            KafkaCentral.enviar(KafkaCentral.NOTIFICACIONES, ws.getOperario(), "AVERIA#" + ws.getOperario() + "#" + id);
+            Operaciones.paso(ws.getOperacion(), "AVERIA avisada a " + ws.getOperario());
         }
         cambiarEstado(ws, EstadoWS.FUGA);
     }
