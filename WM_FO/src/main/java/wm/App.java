@@ -238,7 +238,8 @@ public class App {
 
         String ws = "[" + c[2] + "] ";
         // la central ha contestado: si acaba (DENEGADO o RESUMEN) ya no hay que esperar
-        if (c[0].equals("DENEGADO") || c[0].equals("RESUMEN")) pendientes.remove(c[2]);
+        // con AVERIA tampoco: el resumen llega cuando la estacion se recupere, puede tardar
+        if (c[0].equals("DENEGADO") || c[0].equals("RESUMEN") || c[0].equals("AVERIA")) pendientes.remove(c[2]);
         else pendientes.put(c[2], System.currentTimeMillis());
         switch (c[0]) {
             case "INFO":       // INFO#fo#ws#texto
@@ -251,6 +252,9 @@ public class App {
                 System.out.println(ws + "Riego DENEGADO: " + c[3]);
                 finalizados.offer(c[2]);
                 if (!enFichero) mostrarMenu();
+                break;
+            case "AVERIA":     // AVERIA#fo#ws
+                System.out.println(ws + "La estacion se ha AVERIADO durante el riego. El resumen llegara cuando se recupere");
                 break;
             case "RIEGO":    // RIEGO#fo#ws#caudal#volumen
                 System.out.println(ws + "Caudal " + c[3] + " L/min - Volumen " + c[4] + " L");
