@@ -46,7 +46,8 @@ lanzar_monitor() {
 
 # arranca el engine de una estacion en segundo plano, conectado a su monitor
 lanzar_engine() {
-    dc run -d --rm --no-deps --name "eng-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx64m \
+    # volumen wm-riegos: el engine apunta ahi el riego en marcha, si se cae lo recupera al volver
+    dc run -d --rm --no-deps --name "eng-$(nombre "$1")" -e JAVA_TOOL_OPTIONS=-Xmx64m -v wm-riegos:/app/datos \
         engine "$KAFKA" "mon-$(nombre "$1"):8001" < /dev/null > /dev/null
 }
 
