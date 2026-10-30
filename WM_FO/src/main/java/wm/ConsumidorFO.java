@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -45,9 +46,11 @@ public class ConsumidorFO extends Thread {
                     for (TopicPartition p : particiones) {
                         if (p.topic().equals(KafkaFO.ESTACIONES)) {
                             consumidor.seekToBeginning(List.of(p)); // todo el historial: estado de todas
-                        } else {
-                            consumidor.seekToEnd(List.of(p));       // notificaciones: solo las nuevas
+                        } else if (consumidor.committed(Set.of(p)).get(p) == null) {
+                            consumidor.seekToEnd(List.of(p));       // notificaciones, primera vez: solo las nuevas
                         }
+                        // si no, kafka sigue desde donde lo dejo este operario: si se cerro durante
+                        // un riego, al volver le llegan los avisos que se perdio (y el RESUMEN)
                     }
                     // los seekTo son "perezosos": position() calcula la posicion ya
                     for (TopicPartition p : particiones) {
