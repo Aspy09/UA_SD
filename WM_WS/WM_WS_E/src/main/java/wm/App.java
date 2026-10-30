@@ -44,6 +44,7 @@ public class App {
 
             System.out.println("Conectado al Monitor. Soy la estacion " + idWS + " (" + region + ")");
             Estacion.setSinMonitor(false);
+            Riego.recuperar(idWS); // por si el engine se cayo a mitad de un riego
 
             KafkaEngine.escucharOrdenes(idWS, region); // empezar a leer las ordenes de su provincia
             errorMonitorAvisado = false; // conectado otra vez, si se vuelve a perder se avisa
