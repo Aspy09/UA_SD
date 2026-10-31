@@ -5,6 +5,7 @@
 #
 # Uso:
 #   ./estacion.sh WS-05            -> una estacion, y se abre su menu en esta terminal
+#   ./estacion.sh WS-40 "Parque Nuevo" MADRID -> una estacion nueva: se apunta en el fichero y se abre su menu
 #   ./estacion.sh todas            -> todas las del fichero, en segundo plano
 #   ./estacion.sh todas 10         -> solo las 10 primeras
 #   ./estacion.sh menu WS-05       -> abrir el menu de una que esta en segundo plano
@@ -134,7 +135,13 @@ case "$1" in
         ID="$1"
         UBI="${2:-$(ubicacion "$ID")}"   # la ubicacion del fichero (o la que se escriba despues del id)
         REG="${3:-$(region "$ID")}"      # la region del fichero (o la que se escriba despues)
+        REG=$(echo "${REG:-ALICANTE}" | tr 'a-z' 'A-Z')   # si no se dice ninguna, ALICANTE como el monitor
         [ -z "$UBI" ] && { echo "$ID no esta en $FICHERO (escribe tambien su ubicacion: ./estacion.sh $ID \"Parque...\")"; exit 1; }
+
+        case "$REG" in
+            ALICANTE|VALENCIA|MADRID|BARCELONA|SEVILLA) ;;
+            *) echo "Provincia no valida: $REG (ALICANTE, VALENCIA, MADRID, BARCELONA o SEVILLA)"; exit 1 ;;
+        esac
 
         # si ya esta en marcha (por ejemplo con "todas") no se lanza otra vez, se abre su menu
         if en_marcha "$ID"; then
@@ -143,6 +150,11 @@ case "$1" in
         fi
         docker rm -f "eng-$(nombre "$ID")" > /dev/null 2>&1   # por si quedo un engine sin su monitor
         lanzar_monitor "$ID" "$UBI" "$REG" || { echo "No se ha podido arrancar el monitor de $ID"; exit 1; }
+        # estacion nueva: apuntarla en el fichero para que tambien salga en "todas"
+        if ! grep -q "^$ID#" "$FICHERO"; then
+            echo "$ID#$UBI#$REG" >> "$FICHERO"
+            echo "$ID apuntada en $FICHERO"
+        fi
         lanzar_engine "$ID"
         echo "$ID ($UBI, region $REG) en marcha (para apagarla: ./estacion.sh parar)"
         sleep 3   # que el engine arranque antes de abrir su menu
