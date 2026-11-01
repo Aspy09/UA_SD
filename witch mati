@@ -1,0 +1,76 @@
+[33m6606200[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m paso a main: en el menu de la estacion ya sale la pregunta de los segundos de riego
+[33maeb54ac[m[33m ([m[1;31morigin/yousra[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m el engine escribe las preguntas del menu con println para que se vean con estacion.sh menu (docker logs no saca la linea hasta que acaba)
+[33m13e933e[m paso a main: central.sh para dar ordenes a la central desde la terminal
+[33m0c1f487[m pongo central.sh en el readme
+[33mde42f80[m central.sh: menu en la terminal para mandarle ordenes a la central de railway (lo mismo que los botones del panel)
+[33mfd9267f[m paso a main: menu de la central en docker y el menu de la estacion se puede abrir las veces que haga falta
+[33m18b85e8[m el menu de la estacion ya no usa docker attach (al desconectarse docker cerraba la entrada del engine y la segunda vez el menu no iba), ahora escribe con docker exec y lee con docker logs
+[33m18fd6d7[m la central en docker con stdin y tty para poder usar su menu con docker attach
+[33m7372708[m paso a main: menu de la central en la terminal para regar, bloquear, activar o dar de baja
+[33m6bd6905[m pongo en el readme el menu de la central
+[33mfaf4810[m la central tiene un menu en la terminal para regar, bloquear, activar o dar de baja estaciones (igual que el panel)
+[33m0169c01[m paso a main: cada operario solo ve y riega las estaciones de su provincia, las dadas de baja desaparecen y se sale de los menus sin control c
+[33mf6cb1c9[m actualizo el readme con la provincia en ESTADO, el mensaje BAJA, OTRA_PROVINCIA y como salir de los menus
+[33m2e482f1[m con la opcion 5 se sale del menu de la estacion sin control c (docker attach no hacia caso al kill normal)
+[33m375d167[m estacion.sh sin los mensajes de container creating/created
+[33mf5dc618[m operario.sh le pasa al operario su provincia y ya no salen los mensajes de container creating
+[33mc853ed1[m opcion 3 en el menu del operario para salir sin control c
+[33m3311968[m el operario solo ve las estaciones de su provincia (variable REGION) y quita las que la central da de baja
+[33m28407d8[m ahora un operario solo puede regar estaciones de su provincia, si no la central le deniega con OTRA_PROVINCIA
+[33mf4a20f4[m añado en basedatos un metodo para saber la provincia de un operario
+[33mcae8137[m la central manda la provincia en el estado de cada estacion y avisa a los operarios cuando da de baja una
+[33m8ae716c[m paso a main: las reservas que la estacion no confirma en 15 s se cancelan y estacion.sh avisa si falta una direccion
+[33md90d8a6[m añado en el readme el motivo SIN_RESPUESTA
+[33m0d0baa3[m la central tiene un hilo que cada 5 s revisa si hay reservas sin confirmar
+[33mddab3fb[m riegos cancela las reservas sin respuesta y avisa al operario con DENEGADO SIN_RESPUESTA
+[33m07fe6eb[m estaciones puede cancelar las reservas que la estacion no confirma a tiempo, y si llega un INICIADO que nadie pidio manda PARAR
+[33m83fe985[m cada estacion guarda desde cuando esta reservada para un riego
+[33m7961c98[m estacion.sh avisa y no lanza nada si solo se ha puesto CENTRAL o solo KAFKA, y enseña que direcciones usa
+[33m28e0c55[m paso a main: arreglo de los operarios que no estan dados de alta y estacion.sh mas seguro al parar y lanzar
+[33mf008d41[m arreglo: la central solo acepta riegos de la propia central, de la estacion o de un operario dado de alta, antes dejaba a cualquiera que no empezara por FO-
+[33m532c81d[m arreglo estacion.sh: parar espera a que docker borre todo y todas reintenta si un monitor no arranca
+[33md7c9812[m paso a main: panel por provincias, alertas separadas, trazabilidad de los riegos, errores de los modulos y 15 operarios
+[33m26aba0a[m explico en el readme el topic de errores, la trazabilidad de los riegos y los operarios
+[33mfe8fec4[m panel por provincias: pestañas, topic y operarios de cada provincia, alertas y actividad separadas y lista de operaciones con sus pasos
+[33ma4d19c7[m el panel recibe las alertas, las operaciones con sus pasos, los operarios y las provincias, y las ordenes a todas se pueden hacer por provincia
+[33mf7e1547[m ahora operario.sh tiene lista de operarios, avisa si el id no existe y puede lanzar todos a la vez con un fichero
+[33m7d82e3a[m ahora la central da de alta en la bd los operarios del fichero con su provincia, y añado listarlos para el panel
+[33m30b597e[m creo un fichero con 15 operarios, tres por provincia
+[33m2036058[m el operario avisa a la central si el fichero esta mal o si le piden una estacion o segundos que no valen
+[33mb3e02a2[m añado en el operario un metodo para mandar errores a la central por wm.errores
+[33ma094e57[m el engine avisa a la central cuando pierde la conexion con su monitor, solo una vez hasta que vuelve
+[33m633adf1[m añado en el engine un metodo para mandar errores a la central por wm.errores
+[33me1d2cef[m la central escucha wm.errores y pone los errores de los otros modulos en las alertas
+[33m8cda5df[m la central crea un topic nuevo wm.errores para que los otros modulos le manden sus errores
+[33m045ac1c[m ahora cada riego tiene su numero de operacion y se apuntan todos sus pasos desde la solicitud hasta el resumen
+[33m56d315f[m estaciones guarda la operacion al reservar el riego y apunta cuando la central lo para por fuga o bloqueo
+[33mb4fb567[m cada estacion guarda el numero de la operacion de riego que esta haciendo
+[33mca2b5da[m nueva clase operaciones para dar un numero a cada riego y apuntar todos sus pasos
+[33mcb1410f[m ahora las fugas, desconexiones, denegaciones y errores van a alertas
+[33m0f2b35b[m separo los mensajes de la central en dos listas, actividad normal y alertas
+[33mc56517b[m paso a main: las estaciones van por provincias con un topic de ordenes por provincia para que escale
+[33m8437e6f[m explico en el readme las provincias y por que hay un topic de ordenes por provincia
+[33m469e939[m el panel muestra la provincia de cada estacion
+[33m267705b[m ahora la central crea un topic de ordenes por provincia y manda cada orden al de la provincia de la estacion
+[33mc89ffe6[m la central guarda la provincia de cada estacion en la bd, y si la bd es antigua le añade la columna
+[33m1667870[m el engine solo escucha las ordenes de su provincia en su propio topic, asi no le llegan las de todas las estaciones
+[33m5c9a94e[m el monitor manda la provincia a la central al registrarse y tambien se la pasa al engine
+[33m2069adb[m ahora cada estacion tiene su provincia en el fichero de estaciones y estacion.sh se la pasa al monitor
+[33mde7f595[m ahora estacion.sh menu se cierra cuando eliges la opcion 5 y la estacion sigue funcionando, quito lo del ctrl+c
+[33md3e7656[m añado en el menu del engine la opcion 5 para salir del menu sin parar la estacion
+[33m6b65cde[m arreglo el menu: ahora el ctrl+c no le llega al engine asi no se apaga la estacion al salir
+[33m9ad41bd[m ahora en el menu de una estacion se sale con ctrl+c sin apagarla, y si a una estacion se le cae el engine todas y menu se lo vuelven a arrancar
+[33m71a5a67[m paso a main: estacion.sh lanza todas las estaciones con solo el id y boton para dar de baja estaciones desconectadas
+[33me781d99[m añado el boton de dar de baja en el panel web con confirmacion antes de borrar
+[33m2ea749d[m ahora se puede dar de baja una estacion desde la central pero solo si esta desconectada
+[33m3050484[m añado en basedatos un metodo para borrar una estacion de la bd
+[33m1fc988c[m arreglo estacion.sh: si una estacion ya esta en marcha no la vuelve a lanzar ni apaga su monitor, y limpia el engine si se quedo solo
+[33m13b08e4[m ahora todas las estaciones se lanzan igual con estacion.sh solo con el id, la ubicacion se coge del fichero y añado ws-01 al fichero, y se puede abrir el menu de cualquiera con menu
+[33mfcfb7ff[m ahora estacion.sh tambien puede lanzar todas las estaciones del fichero con su monitor y su engine en segundo plano y pararlas, y quito el script que hice aparte
+[33m43c2674[m creo un script para lanzar muchas estaciones a la vez con su monitor y su engine leyendo el fichero de estaciones, y para pararlas todas
+[33mc280a47[m Merge pull request #10 from Aspy09/mati
+[33mf00f417[m Merge pull request #9 from Aspy09/mati
+[33mde2d1fa[m paso a main el fichero con las 30 estaciones
+[33mff32f5f[m paso a main todo lo de develop: central con panel web, engine y operario con kafka y los dockerfiles
+[33m2c817f7[m Merge pull request #8 from Aspy09/develop
+[33m3cf3c8e[m Merge pull request #5 from Aspy09/develop

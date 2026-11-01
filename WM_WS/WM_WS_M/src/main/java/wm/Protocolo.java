@@ -62,7 +62,7 @@ public class Protocolo {
         return true;
     }
 
-    // Envia la trama y espera ACK; si llega NACK la reenvia (hasta MAX_REINTENTOS)
+    // Envia la trama y espera ACK. si llega NACK reenvia (hasta MAX_REINTENTOS)
     public boolean enviarTrama(String data) throws IOException {
         byte[] trama = empaquetar(data);
         for (int i = 0; i < MAX_REINTENTOS; i++) {

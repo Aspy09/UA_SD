@@ -128,7 +128,7 @@ public class App {
             cerrarCentral();
         }
 
-        // 2) Si no estamos conectados,reintenta (max cada 5 s)
+        // 2) Si no estamos conectados reintenta (max c/5 s)
         if (central == null) {
             if (System.currentTimeMillis() - ultimoIntento < 5000) return;
             if (!conectarCentral()) return;
@@ -144,7 +144,7 @@ public class App {
                 cerrarCentral();
             }
         }
-        // 4) Si no hemos mandado nada, mensaje de vida (como mucho uno por segundo)
+        // 4) Si no hemos mandado nada mensaje de vida (max 1 p s)
         else if (System.currentTimeMillis() - ultimaVida >= 1000) {
             ultimaVida = System.currentTimeMillis();
             if (!enviarVida()) {

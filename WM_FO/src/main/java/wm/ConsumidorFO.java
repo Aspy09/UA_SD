@@ -49,10 +49,9 @@ public class ConsumidorFO extends Thread {
                         } else if (consumidor.committed(Set.of(p)).get(p) == null) {
                             consumidor.seekToEnd(List.of(p));       // notificaciones, primera vez: solo las nuevas
                         }
-                        // si no, kafka sigue desde donde lo dejo este operario: si se cerro durante
-                        // un riego, al volver le llegan los avisos que se perdio (y el RESUMEN)
+                        // kafka sigue desde donde lo dejo este operario
                     }
-                    // los seekTo son "perezosos": position() calcula la posicion ya
+                    // position() calcula la posicion
                     for (TopicPartition p : particiones) {
                         consumidor.position(p);
                     }
